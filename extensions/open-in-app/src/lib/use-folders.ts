@@ -6,9 +6,10 @@ import { glob } from "glob";
 import { PathItem } from "./use-paths";
 
 export interface FolderItem {
-  name: string; // basename
-  path: string; // full absolute path
-  displayPath: string; // tilde-shortened for display
+  name: string;
+  path: string;
+  displayPath: string;
+  isDirectory: boolean;
 }
 
 interface FolderHook {
@@ -18,7 +19,6 @@ interface FolderHook {
 
 const GLOB_CHARS = /[*?[\]{}]/;
 
-/** Directories that are always excluded from scanning */
 const IGNORE = [
   "**/node_modules/**",
   "**/.git/**",
@@ -29,22 +29,20 @@ const IGNORE = [
   "**/__pycache__/**",
 ];
 
-/** Replace ~ with home directory */
 function expandTilde(p: string): string {
   return p.replace(/^~/, os.homedir());
 }
 
-/** Shorten path for display by replacing home dir prefix with ~ */
 function shortenPath(p: string): string {
   const home = os.homedir();
   return p.startsWith(home) ? "~" + p.slice(home.length) : p;
 }
 
-export function useFolders(searchPaths: Pick<PathItem, "path" | "maxDepth">[]): FolderHook {
+export function useFolders(searchPaths: Pick<PathItem, "path" | "maxDepth">[], includeFiles = false): FolderHook {
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const pathsKey = searchPaths.map((p) => `${p.path}:${p.maxDepth ?? ""}`).join("|");
+  const pathsKey = `${searchPaths.map((p) => `${p.path}:${p.maxDepth ?? ""}`).join("|")}:${includeFiles}`;
 
   useEffect(() => {
     if (searchPaths.length === 0) {
@@ -85,7 +83,7 @@ export function useFolders(searchPaths: Pick<PathItem, "path" | "maxDepth">[]): 
         }
 
         if (!hasGlob) {
-          allFolders.push({ name: path.basename(cwd), path: cwd, displayPath: shortenPath(cwd) });
+          allFolders.push({ name: path.basename(cwd), path: cwd, displayPath: shortenPath(cwd), isDirectory: true });
         }
 
         try {
@@ -95,11 +93,12 @@ export function useFolders(searchPaths: Pick<PathItem, "path" | "maxDepth">[]): 
             matches.map(async (match) => {
               try {
                 const stat = await fs.promises.stat(match);
-                if (stat.isDirectory()) {
+                if (stat.isDirectory() || includeFiles) {
                   allFolders.push({
                     name: path.basename(match),
                     path: match,
                     displayPath: shortenPath(match),
+                    isDirectory: stat.isDirectory(),
                   });
                 }
               } catch {
