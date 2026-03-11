@@ -1,6 +1,6 @@
 # Open in App - Agent Navigation Guide
 
-**Generated:** 2026-03-11 | **Extension:** Open in App (Raycast macOS)
+**Generated:** 2026-03-11 | **Commit:** 952eda5 | **Branch:** main
 
 ## Purpose
 

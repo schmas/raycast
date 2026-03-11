@@ -2,7 +2,7 @@
 
 # src/ — Command Layer
 
-**Generated:** 2026-03-11
+**Generated:** 2026-03-11 | **Commit:** 952eda5 | **Branch:** main
 
 ## Purpose
 

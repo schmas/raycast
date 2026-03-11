@@ -2,7 +2,7 @@
 
 # src/lib/ — Utility & Hook Layer
 
-**Generated:** 2026-03-11
+**Generated:** 2026-03-11 | **Commit:** 952eda5 | **Branch:** main
 
 ## Purpose
 
@@ -237,81 +237,6 @@ openInApp(filePath: string, app: AppConfig): Promise<void>
 **Used By:** `open-in-app.tsx` (action handlers)
 
 ---
-
-## For AI Agents
-
-### When Adding New Features to Hooks
-
-1. **Adding App Metadata:**
-   - Extend `AppConfig` in `use-apps.ts`
-   - Update CRUD handlers
-   - Update `AppForm` in `manage-apps.tsx`
-
-2. **Adding Path Scanning Options:**
-   - Extend `PathItem` in `use-paths.ts`
-   - Update glob scanning logic in `use-folders.ts`
-   - Update `PathForm` in `manage-apps.tsx`
-
-3. **Adding Frecency Dimensions:**
-   - Extend frequency map in `use-frecency.ts`
-   - Update sorting algorithm
-
-### Storage Pattern (All Hooks)
-
-All hooks follow same LocalStorage pattern:
-
-1. Load on mount via `useEffect`
-2. Try parse JSON, reset on corruption
-3. Keep state in `useState`
-4. Persist immediately on mutation
-5. Use `useRef` for closure updates (frecency)
-
-**Template:**
-```tsx
-async function load() {
-  const raw = await LocalStorage.getItem<string>(STORAGE_KEY);
-  try {
-    setState(raw ? JSON.parse(raw) : []);
-  } catch {
-    await LocalStorage.removeItem(STORAGE_KEY);
-    setState([]);
-  }
-  setIsLoading(false);
-}
-
-async function mutate(updated: T[]) {
-  setState(updated);
-  await LocalStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-}
-```
-
-### Glob Pattern Matching Examples
-
-```
-~/projects          → lists top-level folders in ~/projects
-~/projects/*        → same as above (explicit)
-~/work/*/src        → lists all src/ folders under ~/work/X/src
-~/work/**           → lists all nested folders under ~/work (recursive)
-~/work/**/node_modules → would match all node_modules (but excluded by IGNORE list)
-```
-
-### Testing Hooks
-
-Hooks can be tested in isolation via React Testing Library or by importing directly in command components with mock data:
-
-```tsx
-// In test/component file
-const { folders } = useFolders(["~/projects"]);
-const { apps } = useApps();
-const { sortByFrequency } = useFrecency();
-```
-
-### File Structure Guidelines
-
-- Hooks follow `use-*` naming convention
-- Each hook <100 lines (split complex logic)
-- Utility functions grouped by concern (parse, search, execute)
-- All exports from hooks include interfaces for type safety
 
 ---
 
