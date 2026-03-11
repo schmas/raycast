@@ -4,6 +4,7 @@ import {
   Application,
   Icon,
   List,
+  LocalStorage,
   getApplications,
   getPreferenceValues,
   open,
@@ -61,10 +62,25 @@ function appShortcut(index: number) {
   return index < SHORTCUT_KEYS.length ? { modifiers: ["cmd" as const], key: SHORTCUT_KEYS[index] } : undefined;
 }
 
+const SHOW_FILES_KEY = "open-in-app:show-files";
+
 export default function OpenInApp() {
   const [query, setQuery] = useState("");
+  const [showFiles, setShowFiles] = useState(false);
   const { paths, isLoading: pathsLoading } = usePaths();
-  const { folders, isLoading: foldersLoading } = useFolders(paths);
+  const { folders, isLoading: foldersLoading } = useFolders(paths, showFiles);
+
+  useEffect(() => {
+    LocalStorage.getItem<string>(SHOW_FILES_KEY).then((val) => {
+      if (val === "true") setShowFiles(true);
+    });
+  }, []);
+
+  function toggleShowFiles() {
+    const next = !showFiles;
+    setShowFiles(next);
+    LocalStorage.setItem(SHOW_FILES_KEY, String(next));
+  }
   const { apps, isLoading: appsLoading } = useApps();
   const { defaultTerminal } = getPreferenceValues<Preferences>();
   const appIcon = useAppIconResolver();
@@ -144,6 +160,7 @@ export default function OpenInApp() {
         return (
           <List.Item
             key={folder.path}
+            icon={folder.isDirectory ? Icon.Folder : Icon.Document}
             title={folder.name}
             subtitle={folder.displayPath}
             accessories={activeApp ? [{ text: `[${activeApp.alias}]` }] : []}
@@ -212,6 +229,11 @@ export default function OpenInApp() {
                 </ActionPanel.Section>
 
                 <ActionPanel.Section>
+                  <Action
+                    title={showFiles ? "Show Folders Only" : "Show Files and Folders"}
+                    icon={showFiles ? Icon.Folder : Icon.Document}
+                    onAction={toggleShowFiles}
+                  />
                   <ManageAction />
                 </ActionPanel.Section>
               </ActionPanel>
