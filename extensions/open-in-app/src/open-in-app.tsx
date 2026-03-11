@@ -232,6 +232,7 @@ export default function OpenInApp() {
                   <Action
                     title={showFiles ? "Show Folders Only" : "Show Files and Folders"}
                     icon={showFiles ? Icon.Folder : Icon.Document}
+                    shortcut={{ modifiers: ["cmd"], key: "." }}
                     onAction={toggleShowFiles}
                   />
                   <ManageAction />
