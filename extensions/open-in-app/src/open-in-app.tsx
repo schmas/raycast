@@ -1,4 +1,14 @@
-import { Action, ActionPanel, Application, Icon, List, getApplications, getPreferenceValues, open } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  Application,
+  Icon,
+  List,
+  getApplications,
+  getPreferenceValues,
+  open,
+  openExtensionPreferences,
+} from "@raycast/api";
 import { useEffect, useState } from "react";
 import ManageApps from "./manage-apps";
 import { fuzzySearch } from "./lib/fuzzy-search";
@@ -44,10 +54,16 @@ function ManageAction() {
   );
 }
 
+const SHORTCUT_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
+
+function appShortcut(index: number) {
+  return index < SHORTCUT_KEYS.length ? { modifiers: ["cmd" as const], key: SHORTCUT_KEYS[index] } : undefined;
+}
+
 export default function OpenInApp() {
   const [query, setQuery] = useState("");
   const { paths, isLoading: pathsLoading } = usePaths();
-  const { folders, isLoading: foldersLoading } = useFolders(paths.map((p) => p.path));
+  const { folders, isLoading: foldersLoading } = useFolders(paths);
   const { apps, isLoading: appsLoading } = useApps();
   const { defaultTerminal } = getPreferenceValues<Preferences>();
   const appIcon = useAppIconResolver();
@@ -65,15 +81,29 @@ export default function OpenInApp() {
   if (!appsLoading && apps.length === 0) {
     return (
       <List>
-        <List.EmptyView
-          title="No apps configured"
-          description="Press ⌘⇧M to open Manage Apps & Paths"
-          actions={
-            <ActionPanel>
-              <ManageAction />
-            </ActionPanel>
-          }
-        />
+        <List.Section title="Get Started">
+          <List.Item
+            title="Choose Default Terminal"
+            subtitle={defaultTerminal ? defaultTerminal.name : "Optional — open folders in terminal with ⌘T"}
+            icon={defaultTerminal ? { fileIcon: defaultTerminal.path } : Icon.Terminal}
+            accessories={defaultTerminal ? [{ text: "✓ Configured" }] : []}
+            actions={
+              <ActionPanel>
+                <Action title="Open Extension Preferences" icon={Icon.Gear} onAction={openExtensionPreferences} />
+              </ActionPanel>
+            }
+          />
+          <List.Item
+            title="Add Apps & Search Paths"
+            subtitle="Configure which apps to use and which folders to search"
+            icon={Icon.AppWindow}
+            actions={
+              <ActionPanel>
+                <ManageAction />
+              </ActionPanel>
+            }
+          />
+        </List.Section>
       </List>
     );
   }
@@ -114,6 +144,7 @@ export default function OpenInApp() {
                 <Action
                   title={`Open in ${activeApp.name}`}
                   icon={appIcon(activeApp)}
+                  shortcut={appShortcut(apps.findIndex((a) => a.id === activeApp.id))}
                   onAction={() => {
                     trackOpen(folder.path);
                     openInApp(folder.path, activeApp);
@@ -128,6 +159,7 @@ export default function OpenInApp() {
                     key={app.id}
                     title={`Open in ${app.name}`}
                     icon={appIcon(app)}
+                    shortcut={appShortcut(apps.findIndex((a) => a.id === app.id))}
                     onAction={() => {
                       trackOpen(folder.path);
                       openInApp(folder.path, app);
