@@ -15,16 +15,17 @@ Both commands import and compose hooks/utilities from `lib/` to handle data and 
 
 ## Key Files
 
-| File | Type | Purpose | Lines |
-|------|------|---------|-------|
-| `open-in-app.tsx` | Command | Main search: fuzzy-find folders, parse alias, select app | 150 |
-| `manage-apps.tsx` | Command | CRUD UI: add/edit/remove apps and search paths | 210 |
+| File              | Type    | Purpose                                                  | Lines |
+| ----------------- | ------- | -------------------------------------------------------- | ----- |
+| `open-in-app.tsx` | Command | Main search: fuzzy-find folders, parse alias, select app | 150   |
+| `manage-apps.tsx` | Command | CRUD UI: add/edit/remove apps and search paths           | 210   |
 
 ## Command: open-in-app.tsx
 
 **Entry Point:** Default export `OpenInApp` component
 
 **Responsibilities:**
+
 - Display Raycast List with search bar (alias + query format)
 - Load folders from configured paths via `useFolders()`
 - Parse user input with `parseAlias()` (e.g., "ij react" → alias=ij, query=react)
@@ -34,6 +35,7 @@ Both commands import and compose hooks/utilities from `lib/` to handle data and 
 - Track opens via `trackOpen()` for frecency calculation
 
 **Key Dependencies:**
+
 - `usePaths()` — configured search paths
 - `useFolders(paths)` — scanned folders from paths
 - `useApps()` — configured app targets
@@ -44,13 +46,16 @@ Both commands import and compose hooks/utilities from `lib/` to handle data and 
 - `useAppIconResolver()` — resolve app icons at runtime
 
 **Preferences Used:**
+
 - `defaultTerminal` (appPicker) — Terminal app for shell opens
 
 **Empty States:**
+
 - No apps configured → show setup prompt (⌘⇧M)
 - No paths configured → show setup prompt (⌘⇧M)
 
 **Actions (per folder):**
+
 - Primary: Open in alias-matched app (if alias provided)
 - Secondary: Open in remaining apps (sorted)
 - Terminal: Open in default terminal (if configured)
@@ -62,6 +67,7 @@ Both commands import and compose hooks/utilities from `lib/` to handle data and 
 **Entry Point:** Default export `ManageApps` component
 
 **Responsibilities:**
+
 - Display two List sections: Apps + Search Paths
 - Add app via `AppForm` (alias + app picker)
 - Edit app via `AppForm`
@@ -72,6 +78,7 @@ Both commands import and compose hooks/utilities from `lib/` to handle data and 
 - Reorder paths (move up/down)
 
 **Key Dependencies:**
+
 - `useApps()` — CRUD: addApp, updateApp, deleteApp
 - `usePaths()` — CRUD: addPath, updatePath, deletePath, movePath
 - `getApplications()` — list installed apps for dropdown
@@ -80,26 +87,32 @@ Both commands import and compose hooks/utilities from `lib/` to handle data and 
 **Subcomponents:**
 
 ### AppForm
+
 Editable form for app configuration.
 
 **Fields:**
+
 - `alias` (text) — short prefix (e.g., "ij", "code")
 - `appId` (dropdown) — installed app selection
 
 **Validation:**
+
 - Alias not empty, no spaces
 - App selected
 
 **On Save:** Stores full app config (name, bundleId, appPath) to LocalStorage
 
 ### PathForm
+
 Editable form for search path configuration.
 
 **Fields:**
+
 - `picker` (file picker) — browse and populate path field
 - `pathText` (text) — full path/glob (editable)
 
 **Info:**
+
 - Supports glob patterns: `*` (one level), `**` (any depth)
 - Example: `~/projects` or `~/work/*/src`
 
@@ -136,6 +149,7 @@ See [`lib/AGENTS.md`](./lib/AGENTS.md) for business logic, hooks, and utilities.
 ### Common Patterns in Commands
 
 **Loading Multiple Data Sources:**
+
 ```tsx
 const { data: item1, isLoading: loading1 } = useHook1();
 const { data: item2, isLoading: loading2 } = useHook2();
@@ -143,15 +157,19 @@ const isLoading = loading1 || loading2;
 ```
 
 **Confirmation Dialog:**
+
 ```tsx
 const confirmed = await confirmAlert({
   title: `Delete "${item.name}"?`,
   primaryAction: { title: "Delete", style: Alert.ActionStyle.Destructive },
 });
-if (confirmed) { /* execute delete */ }
+if (confirmed) {
+  /* execute delete */
+}
 ```
 
 **App Icon Resolution (Dynamic):**
+
 ```tsx
 function useAppIconResolver() {
   const [pathMap, setPathMap] = useState<Record<string, string>>({});
