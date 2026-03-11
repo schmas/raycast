@@ -165,7 +165,7 @@ export default function OpenInApp() {
                   <Action
                     title={`Open in ${secondaryApp.name}`}
                     icon={appIcon(secondaryApp)}
-                    shortcut={{ modifiers: ["cmd"], key: "return" }}
+                    shortcut={appShortcut(apps.findIndex((a) => a.id === secondaryApp.id))}
                     onAction={() => {
                       trackOpen(folder.path);
                       setLastApp(folder.path, secondaryApp.id);
