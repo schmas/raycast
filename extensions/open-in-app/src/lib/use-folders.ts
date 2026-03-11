@@ -94,7 +94,6 @@ export function useFolders(searchPaths: string[]): FolderHook {
     }
 
     scan();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathsKey]);
 
   return { folders, isLoading };

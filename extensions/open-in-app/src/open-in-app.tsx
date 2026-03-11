@@ -68,7 +68,11 @@ export default function OpenInApp() {
         <List.EmptyView
           title="No apps configured"
           description="Press ⌘⇧M to open Manage Apps & Paths"
-          actions={<ActionPanel><ManageAction /></ActionPanel>}
+          actions={
+            <ActionPanel>
+              <ManageAction />
+            </ActionPanel>
+          }
         />
       </List>
     );
@@ -80,7 +84,11 @@ export default function OpenInApp() {
         <List.EmptyView
           title="No search paths configured"
           description="Press ⌘⇧M to open Manage Apps & Paths"
-          actions={<ActionPanel><ManageAction /></ActionPanel>}
+          actions={
+            <ActionPanel>
+              <ManageAction />
+            </ActionPanel>
+          }
         />
       </List>
     );
@@ -106,7 +114,10 @@ export default function OpenInApp() {
                 <Action
                   title={`Open in ${activeApp.name}`}
                   icon={appIcon(activeApp)}
-                  onAction={() => { trackOpen(folder.path); openInApp(folder.path, activeApp); }}
+                  onAction={() => {
+                    trackOpen(folder.path);
+                    openInApp(folder.path, activeApp);
+                  }}
                 />
               )}
               {/* Remaining apps */}
@@ -117,7 +128,10 @@ export default function OpenInApp() {
                     key={app.id}
                     title={`Open in ${app.name}`}
                     icon={appIcon(app)}
-                    onAction={() => { trackOpen(folder.path); openInApp(folder.path, app); }}
+                    onAction={() => {
+                      trackOpen(folder.path);
+                      openInApp(folder.path, app);
+                    }}
                   />
                 ))}
 
@@ -128,14 +142,14 @@ export default function OpenInApp() {
                     title={`Open in ${defaultTerminal.name}`}
                     icon={defaultTerminal.path ? { fileIcon: defaultTerminal.path } : Icon.Terminal}
                     shortcut={{ modifiers: ["cmd"], key: "t" }}
-                    onAction={() => { trackOpen(folder.path); open(folder.path, defaultTerminal.bundleId || defaultTerminal.path); }}
+                    onAction={() => {
+                      trackOpen(folder.path);
+                      open(folder.path, defaultTerminal.bundleId || defaultTerminal.path);
+                    }}
                   />
                 )}
                 {/* Finder */}
-                <Action.ShowInFinder
-                  path={folder.path}
-                  shortcut={{ modifiers: ["cmd"], key: "f" }}
-                />
+                <Action.ShowInFinder path={folder.path} shortcut={{ modifiers: ["cmd"], key: "f" }} />
                 <Action.CopyToClipboard
                   title="Copy Path"
                   content={folder.path}

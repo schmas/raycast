@@ -14,7 +14,7 @@ interface FrecencyHook {
 }
 
 export function useFrecency(): FrecencyHook {
-  const [freqMap, setFreqMap] = useState<FreqMap>({});
+  const [, setFreqMap] = useState<FreqMap>({});
   // Use ref so trackOpen closure always has latest map
   const freqRef = useRef<FreqMap>({});
 

@@ -2,9 +2,9 @@
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "open-in-app",
   "title": "Open in App",
-  "description": "Quick find and open project/files in app",
+  "description": "Fuzzy-find folders and open them in your preferred apps with alias shortcuts",
   "icon": "extension-icon.png",
-  "author": "diego_schmidt",
+  "author": "schmas",
   "platforms": [
     "macOS"
   ],

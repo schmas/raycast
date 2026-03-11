@@ -1,4 +1,15 @@
-import { Action, ActionPanel, Alert, Application, Form, Icon, List, confirmAlert, getApplications, useNavigation } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  Alert,
+  Application,
+  Form,
+  Icon,
+  List,
+  confirmAlert,
+  getApplications,
+  useNavigation,
+} from "@raycast/api";
 import { useEffect, useState } from "react";
 import { AppConfig, useApps } from "./lib/use-apps";
 import { PathItem, displayPath, usePaths } from "./lib/use-paths";
@@ -70,7 +81,7 @@ export default function ManageApps() {
                   target={<PathForm initialPath={item.path} onSave={(p) => updatePath(item.id, p)} />}
                 />
                 <Action
-                  title="Move Up"
+                  title="Move up"
                   icon={Icon.ArrowUp}
                   shortcut={{ modifiers: ["cmd"], key: "arrowUp" }}
                   onAction={() => movePath(item.id, "up")}
@@ -112,13 +123,7 @@ interface AppFormValues {
   appId: string; // bundleId or app path, from getApplications()
 }
 
-function AppForm({
-  app,
-  onSave,
-}: {
-  app?: AppConfig;
-  onSave: (data: Omit<AppConfig, "id">) => Promise<void>;
-}) {
+function AppForm({ app, onSave }: { app?: AppConfig; onSave: (data: Omit<AppConfig, "id">) => Promise<void> }) {
   const { pop } = useNavigation();
   const [installedApps, setInstalledApps] = useState<Application[]>([]);
   const [isLoadingApps, setIsLoadingApps] = useState(true);
@@ -147,7 +152,13 @@ function AppForm({
         </ActionPanel>
       }
     >
-      <Form.TextField id="alias" title="Alias" placeholder="ij" defaultValue={app?.alias} info="Short prefix used to target this app (e.g. 'ij react')" />
+      <Form.TextField
+        id="alias"
+        title="Alias"
+        placeholder="ij"
+        defaultValue={app?.alias}
+        info="Short prefix used to target this app (e.g. 'ij react')"
+      />
       <Form.Dropdown id="appId" title="Application" defaultValue={app?.bundleId}>
         {installedApps.map((a) => (
           <Form.Dropdown.Item
