@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import ManageApps from "./manage-apps";
 import { fuzzySearch } from "./lib/fuzzy-search";
 import { useFrecency } from "./lib/use-frecency";
+import { useLastApp } from "./lib/use-last-app";
 import { openInApp } from "./lib/open-in-app";
 import { parseAlias } from "./lib/parse-alias";
 import { AppConfig, useApps } from "./lib/use-apps";
@@ -68,6 +69,7 @@ export default function OpenInApp() {
   const { defaultTerminal } = getPreferenceValues<Preferences>();
   const appIcon = useAppIconResolver();
   const { sortByFrequency, trackOpen } = useFrecency();
+  const { getLastApp, setLastApp } = useLastApp();
 
   const isLoading = pathsLoading || foldersLoading || appsLoading;
 
@@ -131,71 +133,77 @@ export default function OpenInApp() {
       onSearchTextChange={setQuery}
       searchBarPlaceholder="Type alias + query (e.g. ij react) or just search..."
     >
-      {results.map((folder) => (
-        <List.Item
-          key={folder.path}
-          title={folder.name}
-          subtitle={folder.displayPath}
-          accessories={activeApp ? [{ text: `[${activeApp.alias}]` }] : []}
-          actions={
-            <ActionPanel>
-              {/* Primary: alias-matched app first */}
-              {activeApp && (
-                <Action
-                  title={`Open in ${activeApp.name}`}
-                  icon={appIcon(activeApp)}
-                  shortcut={appShortcut(apps.findIndex((a) => a.id === activeApp.id))}
-                  onAction={() => {
-                    trackOpen(folder.path);
-                    openInApp(folder.path, activeApp);
-                  }}
-                />
-              )}
-              {/* Remaining apps */}
-              {apps
-                .filter((app) => app.id !== activeApp?.id)
-                .map((app) => (
-                  <Action
-                    key={app.id}
-                    title={`Open in ${app.name}`}
-                    icon={appIcon(app)}
-                    shortcut={appShortcut(apps.findIndex((a) => a.id === app.id))}
-                    onAction={() => {
-                      trackOpen(folder.path);
-                      openInApp(folder.path, app);
-                    }}
-                  />
-                ))}
+      {results.map((folder) => {
+        const lastAppId = getLastApp(folder.path);
+        const lastApp = lastAppId ? (apps.find((a) => a.id === lastAppId) ?? null) : null;
+        const primaryApp = activeApp ?? lastApp ?? apps[0] ?? null;
 
-              <ActionPanel.Section>
-                {/* Terminal */}
-                {defaultTerminal && (
+        return (
+          <List.Item
+            key={folder.path}
+            title={folder.name}
+            subtitle={folder.displayPath}
+            accessories={activeApp ? [{ text: `[${activeApp.alias}]` }] : []}
+            actions={
+              <ActionPanel>
+                {primaryApp && (
                   <Action
-                    title={`Open in ${defaultTerminal.name}`}
-                    icon={defaultTerminal.path ? { fileIcon: defaultTerminal.path } : Icon.Terminal}
-                    shortcut={{ modifiers: ["cmd"], key: "t" }}
+                    title={`Open in ${primaryApp.name}`}
+                    icon={appIcon(primaryApp)}
+                    shortcut={appShortcut(apps.findIndex((a) => a.id === primaryApp.id))}
                     onAction={() => {
                       trackOpen(folder.path);
-                      open(folder.path, defaultTerminal.bundleId || defaultTerminal.path);
+                      setLastApp(folder.path, primaryApp.id);
+                      openInApp(folder.path, primaryApp);
                     }}
                   />
                 )}
-                {/* Finder */}
-                <Action.ShowInFinder path={folder.path} shortcut={{ modifiers: ["cmd"], key: "f" }} />
-                <Action.CopyToClipboard
-                  title="Copy Path"
-                  content={folder.path}
-                  shortcut={{ modifiers: ["cmd"], key: "c" }}
-                />
-              </ActionPanel.Section>
+                {apps
+                  .filter((app) => app.id !== primaryApp?.id)
+                  .map((app) => (
+                    <Action
+                      key={app.id}
+                      title={`Open in ${app.name}`}
+                      icon={appIcon(app)}
+                      shortcut={appShortcut(apps.findIndex((a) => a.id === app.id))}
+                      onAction={() => {
+                        trackOpen(folder.path);
+                        setLastApp(folder.path, app.id);
+                        openInApp(folder.path, app);
+                      }}
+                    />
+                  ))}
 
-              <ActionPanel.Section>
-                <ManageAction />
-              </ActionPanel.Section>
-            </ActionPanel>
-          }
-        />
-      ))}
+                <ActionPanel.Section>
+                  {/* Terminal */}
+                  {defaultTerminal && (
+                    <Action
+                      title={`Open in ${defaultTerminal.name}`}
+                      icon={defaultTerminal.path ? { fileIcon: defaultTerminal.path } : Icon.Terminal}
+                      shortcut={{ modifiers: ["cmd"], key: "t" }}
+                      onAction={() => {
+                        trackOpen(folder.path);
+                        open(folder.path, defaultTerminal.bundleId || defaultTerminal.path);
+                      }}
+                    />
+                  )}
+                  {/* Finder */}
+                  <Action.ShowInFinder path={folder.path} shortcut={{ modifiers: ["cmd"], key: "f" }} />
+                  <Action.CopyToClipboard
+                    title="Copy Path"
+                    content={folder.path}
+                    shortcut={{ modifiers: ["cmd"], key: "c" }}
+                  />
+                </ActionPanel.Section>
+
+                <ActionPanel.Section>
+                  <ManageAction />
+                </ActionPanel.Section>
+              </ActionPanel>
+            }
+          />
+        );
+      })}
     </List>
   );
 }
