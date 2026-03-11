@@ -69,7 +69,7 @@ export default function OpenInApp() {
   const { defaultTerminal } = getPreferenceValues<Preferences>();
   const appIcon = useAppIconResolver();
   const { sortByFrequency, trackOpen } = useFrecency();
-  const { getLastApp, setLastApp } = useLastApp();
+  const { getLastApp, getSecondLastApp, setLastApp } = useLastApp();
 
   const isLoading = pathsLoading || foldersLoading || appsLoading;
 
@@ -135,8 +135,11 @@ export default function OpenInApp() {
     >
       {results.map((folder) => {
         const lastAppId = getLastApp(folder.path);
+        const secondLastAppId = getSecondLastApp(folder.path);
         const lastApp = lastAppId ? (apps.find((a) => a.id === lastAppId) ?? null) : null;
+        const secondLastApp = secondLastAppId ? (apps.find((a) => a.id === secondLastAppId) ?? null) : null;
         const primaryApp = activeApp ?? lastApp ?? apps[0] ?? null;
+        const secondaryApp = !activeApp && secondLastApp?.id !== primaryApp?.id ? secondLastApp : null;
 
         return (
           <List.Item
@@ -158,8 +161,20 @@ export default function OpenInApp() {
                     }}
                   />
                 )}
+                {secondaryApp && (
+                  <Action
+                    title={`Open in ${secondaryApp.name}`}
+                    icon={appIcon(secondaryApp)}
+                    shortcut={{ modifiers: ["cmd"], key: "return" }}
+                    onAction={() => {
+                      trackOpen(folder.path);
+                      setLastApp(folder.path, secondaryApp.id);
+                      openInApp(folder.path, secondaryApp);
+                    }}
+                  />
+                )}
                 {apps
-                  .filter((app) => app.id !== primaryApp?.id)
+                  .filter((app) => app.id !== primaryApp?.id && app.id !== secondaryApp?.id)
                   .map((app) => (
                     <Action
                       key={app.id}
