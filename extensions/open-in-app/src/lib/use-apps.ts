@@ -16,6 +16,7 @@ export interface AppConfigHook {
   addApp: (data: Omit<AppConfig, "id">) => Promise<void>;
   updateApp: (app: AppConfig) => Promise<void>;
   deleteApp: (id: string) => Promise<void>;
+  moveApp: (id: string, direction: "up" | "down") => Promise<void>;
 }
 
 const STORAGE_KEY = "open-in-app:apps";
@@ -68,5 +69,18 @@ export function useApps(): AppConfigHook {
     });
   }
 
-  return { apps, isLoading, addApp, updateApp, deleteApp };
+  async function moveApp(id: string, direction: "up" | "down") {
+    setApps((prev) => {
+      const idx = prev.findIndex((a) => a.id === id);
+      if (idx === -1) return prev;
+      const newIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (newIdx < 0 || newIdx >= prev.length) return prev;
+      const updated = [...prev];
+      [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
+      persist(updated);
+      return updated;
+    });
+  }
+
+  return { apps, isLoading, addApp, updateApp, deleteApp, moveApp };
 }
