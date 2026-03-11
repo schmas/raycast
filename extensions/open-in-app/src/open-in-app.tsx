@@ -1,0 +1,155 @@
+import { Action, ActionPanel, Application, Icon, List, getApplications, getPreferenceValues, open } from "@raycast/api";
+import { useEffect, useState } from "react";
+import ManageApps from "./manage-apps";
+import { fuzzySearch } from "./lib/fuzzy-search";
+import { useFrecency } from "./lib/use-frecency";
+import { openInApp } from "./lib/open-in-app";
+import { parseAlias } from "./lib/parse-alias";
+import { AppConfig, useApps } from "./lib/use-apps";
+import { useFolders } from "./lib/use-folders";
+import { usePaths } from "./lib/use-paths";
+
+interface Preferences {
+  defaultTerminal?: Application;
+}
+
+/** Resolves the .app path for an AppConfig — prefers stored appPath, falls back to runtime lookup */
+function useAppIconResolver() {
+  const [pathMap, setPathMap] = useState<Record<string, string>>({});
+  useEffect(() => {
+    getApplications().then((installed) => {
+      const map: Record<string, string> = {};
+      for (const a of installed) {
+        if (a.bundleId) map[a.bundleId] = a.path;
+        map[a.path] = a.path;
+      }
+      setPathMap(map);
+    });
+  }, []);
+  return (app: AppConfig) => {
+    const path = app.appPath || pathMap[app.bundleId];
+    return path ? { fileIcon: path } : Icon.AppWindow;
+  };
+}
+
+/** Action that pushes the Manage Apps & Paths screen */
+function ManageAction() {
+  return (
+    <Action.Push
+      title="Manage Apps & Paths"
+      icon={Icon.Gear}
+      target={<ManageApps />}
+      shortcut={{ modifiers: ["cmd", "shift"], key: "m" }}
+    />
+  );
+}
+
+export default function OpenInApp() {
+  const [query, setQuery] = useState("");
+  const { paths, isLoading: pathsLoading } = usePaths();
+  const { folders, isLoading: foldersLoading } = useFolders(paths.map((p) => p.path));
+  const { apps, isLoading: appsLoading } = useApps();
+  const { defaultTerminal } = getPreferenceValues<Preferences>();
+  const appIcon = useAppIconResolver();
+  const { sortByFrequency, trackOpen } = useFrecency();
+
+  const isLoading = pathsLoading || foldersLoading || appsLoading;
+
+  const { alias, query: searchTerm } = parseAlias(query);
+  const activeApp = alias ? (apps.find((a) => a.alias === alias) ?? null) : null;
+
+  // When searching: fuzzy sort. When no query: frecency sort (most used first)
+  const filtered = fuzzySearch(folders, searchTerm, "name");
+  const results = searchTerm ? filtered : sortByFrequency(filtered);
+
+  if (!appsLoading && apps.length === 0) {
+    return (
+      <List>
+        <List.EmptyView
+          title="No apps configured"
+          description="Press ⌘⇧M to open Manage Apps & Paths"
+          actions={<ActionPanel><ManageAction /></ActionPanel>}
+        />
+      </List>
+    );
+  }
+
+  if (!pathsLoading && paths.length === 0) {
+    return (
+      <List>
+        <List.EmptyView
+          title="No search paths configured"
+          description="Press ⌘⇧M to open Manage Apps & Paths"
+          actions={<ActionPanel><ManageAction /></ActionPanel>}
+        />
+      </List>
+    );
+  }
+
+  return (
+    <List
+      filtering={false}
+      isLoading={isLoading}
+      onSearchTextChange={setQuery}
+      searchBarPlaceholder="Type alias + query (e.g. ij react) or just search..."
+    >
+      {results.map((folder) => (
+        <List.Item
+          key={folder.path}
+          title={folder.name}
+          subtitle={folder.displayPath}
+          accessories={activeApp ? [{ text: `[${activeApp.alias}]` }] : []}
+          actions={
+            <ActionPanel>
+              {/* Primary: alias-matched app first */}
+              {activeApp && (
+                <Action
+                  title={`Open in ${activeApp.name}`}
+                  icon={appIcon(activeApp)}
+                  onAction={() => { trackOpen(folder.path); openInApp(folder.path, activeApp); }}
+                />
+              )}
+              {/* Remaining apps */}
+              {apps
+                .filter((app) => app.id !== activeApp?.id)
+                .map((app) => (
+                  <Action
+                    key={app.id}
+                    title={`Open in ${app.name}`}
+                    icon={appIcon(app)}
+                    onAction={() => { trackOpen(folder.path); openInApp(folder.path, app); }}
+                  />
+                ))}
+
+              <ActionPanel.Section>
+                {/* Terminal */}
+                {defaultTerminal && (
+                  <Action
+                    title={`Open in ${defaultTerminal.name}`}
+                    icon={defaultTerminal.path ? { fileIcon: defaultTerminal.path } : Icon.Terminal}
+                    shortcut={{ modifiers: ["cmd"], key: "t" }}
+                    onAction={() => { trackOpen(folder.path); open(folder.path, defaultTerminal.bundleId || defaultTerminal.path); }}
+                  />
+                )}
+                {/* Finder */}
+                <Action.ShowInFinder
+                  path={folder.path}
+                  shortcut={{ modifiers: ["cmd"], key: "f" }}
+                />
+                <Action.CopyToClipboard
+                  title="Copy Path"
+                  content={folder.path}
+                  shortcut={{ modifiers: ["cmd"], key: "c" }}
+                />
+              </ActionPanel.Section>
+
+              <ActionPanel.Section>
+                <ManageAction />
+              </ActionPanel.Section>
+            </ActionPanel>
+          }
+        />
+      ))}
+    </List>
+  );
+}
