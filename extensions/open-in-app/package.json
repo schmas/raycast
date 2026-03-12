@@ -9,7 +9,8 @@
     "macOS"
   ],
   "categories": [
-    "Developer Tools"
+    "Developer Tools",
+    "Productivity"
   ],
   "license": "MIT",
   "commands": [
