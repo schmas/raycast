@@ -163,7 +163,12 @@ export default function OpenInApp() {
             icon={folder.isDirectory ? Icon.Folder : Icon.Document}
             title={folder.name}
             subtitle={folder.displayPath}
-            accessories={activeApp ? [{ text: `[${activeApp.alias}]` }] : []}
+            accessories={[
+              ...(activeApp ? [{ text: `[${activeApp.alias}]` }] : []),
+              ...(getFrequency(folder.path) > 0
+                ? [{ text: `${getFrequency(folder.path)}`, tooltip: "Times opened" }]
+                : []),
+            ]}
             actions={
               <ActionPanel>
                 {primaryApp && (
