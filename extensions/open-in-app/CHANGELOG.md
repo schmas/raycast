@@ -1,5 +1,14 @@
 # Open in App Changelog
 
+## [1.2.0] - 2026-03-28
+
+- Default app is now the Enter action — per-folder default determines primary action order
+- Three-way filter mode — cycle Folders / Files / Files & Folders with `⌘.`
+- Toast feedback on filter mode change
+- Dynamic search bar placeholder reflects current filter mode
+- Alias context — navigation title shows active app name, placeholder updates to "Search in {App}…"
+- Alias tag no longer duplicates the default app tag in accessories
+
 ## [Folder Defaults] - 2026-03-28
 
 - Per-folder default app — first open sets the default, subsequent opens don't change it

@@ -19,7 +19,9 @@ That's it. Open the **Open in App** command and start searching.
 - **Frecency sorting** — folders you open most frequently rise to the top when no query is active
 - **Glob patterns** — configure search paths like `~/work/*/src` or `~/projects/**` for flexible scanning
 - **Multiple apps** — switch between apps from the action panel without leaving Raycast
-- **Per-folder defaults** — each folder remembers which app you normally use for it
+- **Per-folder defaults** — each folder remembers which app you normally use for it; the default app becomes the Enter action
+- **Filter modes** — cycle between Folders, Files, or Files & Folders with `⌘.`
+- **Alias context** — typing an alias updates the navigation title and placeholder to show the active app
 - **Terminal integration** — open any folder in your preferred terminal app
 - **Finder reveal** — quickly show a folder in Finder
 
@@ -39,7 +41,7 @@ Prefix your search with an app alias followed by a space:
 | `ij react`    | Search for "react", open directly in IntelliJ |
 | `code my-api` | Search for "my-api", open directly in VS Code |
 
-When using an alias, only the alias-matched app appears in the action panel.
+When using an alias, only the alias-matched app appears in the action panel. The navigation title updates to show the active app (e.g. "Open in IntelliJ IDEA") and the placeholder reflects the targeted app.
 
 ### Folder Defaults
 
@@ -59,22 +61,34 @@ Each result row shows:
 - **Default app alias** as a tag pill on the right
 - **Frecency score** — digit-aligned open count
 
+### Filter Modes
+
+Press `⌘.` to cycle through three filter modes:
+
+| Mode                | Shows                      |
+| ------------------- | -------------------------- |
+| **Folders**         | Directories only (default) |
+| **Files**           | Files only                 |
+| **Files & Folders** | Both files and directories |
+
+A toast confirms the active mode and the search bar placeholder updates to reflect it. Your selection persists across sessions.
+
 ### Frecency
 
 When the search bar is empty, folders are sorted by how often you open them. The more you use a folder, the higher it ranks. Start typing to switch to fuzzy-search ranking.
 
 ### Keyboard Shortcuts
 
-| Shortcut | Action                                               |
-| -------- | ---------------------------------------------------- |
-| `↵`      | Open in first configured app (or alias-matched)      |
-| `⌘1–9`   | Open in Nth configured app (does not change default) |
-| `⌥⌘1–9`  | Set as default & open in Nth configured app          |
-| `⌘T`     | Open in default terminal                             |
-| `⌘F`     | Show in Finder                                       |
-| `⌘C`     | Copy path to clipboard                               |
-| `⌘.`     | Toggle files/folders view                            |
-| `⌘⇧M`    | Manage Apps & Paths                                  |
+| Shortcut | Action                                                 |
+| -------- | ------------------------------------------------------ |
+| `↵`      | Open in default app for that folder (or alias-matched) |
+| `⌘1–9`   | Open in Nth configured app (does not change default)   |
+| `⌥⌘1–9`  | Set as default & open in Nth configured app            |
+| `⌘T`     | Open in default terminal                               |
+| `⌘F`     | Show in Finder                                         |
+| `⌘C`     | Copy path to clipboard                                 |
+| `⌘.`     | Cycle filter: Folders → Files → Files & Folders        |
+| `⌘⇧M`    | Manage Apps & Paths                                    |
 
 ## Configuration
 

@@ -38,11 +38,16 @@ function shortenPath(p: string): string {
   return p.startsWith(home) ? "~" + p.slice(home.length) : p;
 }
 
-export function useFolders(searchPaths: Pick<PathItem, "path" | "maxDepth">[], includeFiles = false): FolderHook {
+export type FilterMode = "folders" | "files" | "all";
+
+export function useFolders(
+  searchPaths: Pick<PathItem, "path" | "maxDepth">[],
+  filterMode: FilterMode = "folders",
+): FolderHook {
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const pathsKey = `${searchPaths.map((p) => `${p.path}:${p.maxDepth ?? ""}`).join("|")}:${includeFiles}`;
+  const pathsKey = `${searchPaths.map((p) => `${p.path}:${p.maxDepth ?? ""}`).join("|")}:${filterMode}`;
 
   useEffect(() => {
     if (searchPaths.length === 0) {
@@ -85,7 +90,7 @@ export function useFolders(searchPaths: Pick<PathItem, "path" | "maxDepth">[], i
           continue;
         }
 
-        if (!hasGlob) {
+        if (!hasGlob && filterMode !== "files") {
           allFolders.push({ name: path.basename(cwd), path: cwd, displayPath: shortenPath(cwd), isDirectory: true });
         }
 
@@ -96,12 +101,15 @@ export function useFolders(searchPaths: Pick<PathItem, "path" | "maxDepth">[], i
             matches.map(async (match) => {
               try {
                 const stat = await fs.promises.stat(match);
-                if (stat.isDirectory() || includeFiles) {
+                const isDir = stat.isDirectory();
+                const include =
+                  filterMode === "all" || (filterMode === "folders" && isDir) || (filterMode === "files" && !isDir);
+                if (include) {
                   allFolders.push({
                     name: path.basename(match),
                     path: match,
                     displayPath: shortenPath(match),
-                    isDirectory: stat.isDirectory(),
+                    isDirectory: isDir,
                   });
                 }
               } catch {

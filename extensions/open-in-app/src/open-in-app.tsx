@@ -19,7 +19,7 @@ import { useDefaultApp } from "./lib/use-default-app";
 import { openInApp } from "./lib/open-in-app";
 import { parseAlias } from "./lib/parse-alias";
 import { AppConfig, AppConfigHook, useApps } from "./lib/use-apps";
-import { FolderItem, useFolders } from "./lib/use-folders";
+import { FilterMode, FolderItem, useFolders } from "./lib/use-folders";
 import { PathsHook, usePaths } from "./lib/use-paths";
 
 const FIGURE_SPACE = "\u2007"; // same width as a digit
@@ -78,25 +78,37 @@ function appSetDefaultShortcut(index: number) {
     : undefined;
 }
 
-const SHOW_FILES_KEY = "open-in-app:show-files";
+const FILTER_MODE_KEY = "open-in-app:filter-mode";
+
+const FILTER_CYCLE: FilterMode[] = ["folders", "files", "all"];
+const FILTER_LABELS: Record<FilterMode, string> = {
+  folders: "Folders",
+  files: "Files",
+  all: "Files & Folders",
+};
 
 export default function OpenInApp() {
   const [query, setQuery] = useState("");
-  const [showFiles, setShowFiles] = useState(false);
+  const [filterMode, setFilterMode] = useState<FilterMode>("folders");
   const pathsHook = usePaths();
   const { paths, isLoading: pathsLoading } = pathsHook;
-  const { folders, isLoading: foldersLoading } = useFolders(paths, showFiles);
+  const { folders, isLoading: foldersLoading } = useFolders(paths, filterMode);
 
   useEffect(() => {
-    LocalStorage.getItem<string>(SHOW_FILES_KEY).then((val) => {
-      if (val === "true") setShowFiles(true);
+    LocalStorage.getItem<string>(FILTER_MODE_KEY).then((val) => {
+      if (val === "files" || val === "all") setFilterMode(val);
     });
   }, []);
 
-  async function toggleShowFiles() {
-    const next = !showFiles;
-    setShowFiles(next);
-    await LocalStorage.setItem(SHOW_FILES_KEY, String(next));
+  async function cycleFilterMode() {
+    const idx = FILTER_CYCLE.indexOf(filterMode);
+    const next = FILTER_CYCLE[(idx + 1) % FILTER_CYCLE.length];
+    setFilterMode(next);
+    await LocalStorage.setItem(FILTER_MODE_KEY, next);
+    await showToast({
+      style: Toast.Style.Success,
+      title: `Showing ${FILTER_LABELS[next]}`,
+    });
   }
   const appsHook = useApps();
   const { apps, isLoading: appsLoading } = appsHook;
@@ -111,6 +123,10 @@ export default function OpenInApp() {
   const activeApp = alias ? (apps.find((a) => a.alias === alias) ?? null) : null;
 
   const effectiveSearchTerm = activeApp ? searchTerm : query;
+
+  const searchBarPlaceholder = activeApp
+    ? `Search in ${activeApp.name}…`
+    : `Search ${FILTER_LABELS[filterMode].toLowerCase()}… | alias: ij react | exact: 'claude`;
 
   const frecencyTiebreaker = (item: { path: string }) => getFrequency(item.path);
   const filtered = fuzzySearch(folders, effectiveSearchTerm, "name", frecencyTiebreaker);
@@ -167,13 +183,16 @@ export default function OpenInApp() {
       filtering={false}
       isLoading={isLoading}
       onSearchTextChange={setQuery}
-      searchBarPlaceholder="Search… | alias: ij react | exact: 'claude"
+      searchBarPlaceholder={searchBarPlaceholder}
+      navigationTitle={activeApp ? `Open in ${activeApp.name}` : undefined}
     >
       {results.map((folder) => {
         const defaultAppId = getDefaultApp(folder.path);
         const defaultApp = defaultAppId ? (apps.find((a) => a.id === defaultAppId) ?? null) : null;
 
-        const visibleApps = activeApp ? [activeApp] : apps;
+        const orderedApps =
+          defaultApp && !activeApp ? [defaultApp, ...apps.filter((a) => a.id !== defaultApp.id)] : apps;
+        const visibleApps = activeApp ? [activeApp] : orderedApps;
 
         return (
           <List.Item
@@ -183,10 +202,11 @@ export default function OpenInApp() {
             subtitle={folder.name.length > 35 ? "" : parentPath(folder)}
             keywords={[folder.name]}
             accessories={[
-              ...(activeApp ? [{ tag: activeApp.alias }] : []),
-              ...(defaultApp
-                ? [{ tag: defaultApp.alias.padEnd(4), tooltip: `Default: ${defaultApp.name}` }]
-                : [{ text: "      " }]),
+              ...(activeApp
+                ? [{ tag: activeApp.alias }]
+                : defaultApp
+                  ? [{ tag: defaultApp.alias.padEnd(4), tooltip: `Default: ${defaultApp.name}` }]
+                  : [{ text: "      " }]),
               { text: padNum(getFrequency(folder.path), 4), tooltip: "Times opened" },
             ]}
             actions={
@@ -257,10 +277,12 @@ export default function OpenInApp() {
 
                 <ActionPanel.Section>
                   <Action
-                    title={showFiles ? "Show Folders Only" : "Show Files and Folders"}
-                    icon={showFiles ? Icon.Folder : Icon.Document}
+                    title={`Show ${FILTER_LABELS[FILTER_CYCLE[(FILTER_CYCLE.indexOf(filterMode) + 1) % FILTER_CYCLE.length]]}`}
+                    icon={
+                      filterMode === "folders" ? Icon.Document : filterMode === "files" ? Icon.AppWindow : Icon.Folder
+                    }
                     shortcut={{ modifiers: ["cmd"], key: "." }}
-                    onAction={toggleShowFiles}
+                    onAction={cycleFilterMode}
                   />
                   <ManageAction appsHook={appsHook} pathsHook={pathsHook} />
                 </ActionPanel.Section>
