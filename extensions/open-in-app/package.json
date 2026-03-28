@@ -5,6 +5,7 @@
   "description": "Fuzzy-find folders and open them in your preferred apps with alias shortcuts",
   "icon": "extension-icon.png",
   "author": "schmas",
+  "owner": "shmas-corp",
   "platforms": [
     "macOS"
   ],
