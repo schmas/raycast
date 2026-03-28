@@ -30,6 +30,8 @@ jobs:
         with:
           node-version: 20
 
+      - run: npm ci
+
       - name: Get current version
         id: current
         run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
@@ -138,6 +140,10 @@ jobs:
               printf '# Changelog\n\n%s\n' "$ENTRY" > CHANGELOG.md
             fi
           fi
+
+      - name: Format generated files
+        run: npx prettier --write CHANGELOG.md package.json
+        continue-on-error: true
 
       - name: Commit version bump & changelog
         run: |
