@@ -29,5 +29,5 @@ jobs:
           cache-dependency-path: extensions/${{ matrix.extension }}/package-lock.json
       - run: npm ci
       - run: npx ray build -e dist
-      - run: npx eslint . --max-warnings 0 --ignore-pattern eslint.config.js
+      - run: npx eslint src/ --max-warnings 0
       - run: npx prettier --check "src/**" "*.json"
