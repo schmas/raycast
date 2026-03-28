@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "open-in-app",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "title": "Open in App",
   "description": "Fuzzy-find folders and open them in your preferred apps with alias shortcuts",
   "icon": "extension-icon.png",

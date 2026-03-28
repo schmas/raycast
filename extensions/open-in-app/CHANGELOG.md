@@ -1,5 +1,9 @@
 # Open in App Changelog
 
+## [1.2.1] - 2026-03-28
+
+
+
 ## [1.2.0] - 2026-03-28
 
 - Default app is now the Enter action — per-folder default determines primary action order
