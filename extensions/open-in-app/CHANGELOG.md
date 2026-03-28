@@ -9,6 +9,7 @@
 - Alias-driven opens no longer modify the stored default
 - Cleaner list display — alias tag, digit-aligned frecency score, truncated parent paths
 - Long folder names auto-hide path subtitle to preserve accessory alignment
+- Exact search mode — prefix query with `'` for case-insensitive substring matching
 
 ## [Initial Version] - 2026-03-11
 

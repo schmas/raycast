@@ -167,7 +167,7 @@ export default function OpenInApp() {
       filtering={false}
       isLoading={isLoading}
       onSearchTextChange={setQuery}
-      searchBarPlaceholder="Type alias + query (e.g. ij react) or just search..."
+      searchBarPlaceholder="Search… | alias: ij react | exact: 'claude"
     >
       {results.map((folder) => {
         const defaultAppId = getDefaultApp(folder.path);
