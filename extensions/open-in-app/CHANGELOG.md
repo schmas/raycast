@@ -1,5 +1,9 @@
 # Open in App Changelog
 
+## [1.2.2] - 2026-03-28
+
+- fix(ci): use ray lint on macos, format release outputs with prettier
+
 ## [1.2.1] - 2026-03-28
 
 ## [1.2.0] - 2026-03-28
