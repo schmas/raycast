@@ -15,14 +15,28 @@ import { useEffect, useState } from "react";
 import ManageApps from "./manage-apps";
 import { fuzzySearch } from "./lib/fuzzy-search";
 import { useFrecency } from "./lib/use-frecency";
-import { useLastApp } from "./lib/use-last-app";
+import { useDefaultApp } from "./lib/use-default-app";
 import { openInApp } from "./lib/open-in-app";
 import { parseAlias } from "./lib/parse-alias";
 import { AppConfig, AppConfigHook, useApps } from "./lib/use-apps";
-import { useFolders } from "./lib/use-folders";
+import { FolderItem, useFolders } from "./lib/use-folders";
 import { PathsHook, usePaths } from "./lib/use-paths";
 
-/** Resolves the .app path for an AppConfig — prefers stored appPath, falls back to runtime lookup */
+const FIGURE_SPACE = "\u2007"; // same width as a digit
+
+function padNum(n: number, width: number): string {
+  const s = String(n);
+  return FIGURE_SPACE.repeat(Math.max(0, width - s.length)) + s;
+}
+
+/** Show parent path (title already shows folder name), truncated to keep last 3 segments */
+function parentPath(folder: FolderItem): string {
+  const parts = folder.displayPath.split("/");
+  parts.pop();
+  if (parts.length <= 4) return parts.join("/");
+  return "…/" + parts.slice(-3).join("/");
+}
+
 function useAppIconResolver() {
   const [pathMap, setPathMap] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -41,7 +55,6 @@ function useAppIconResolver() {
   };
 }
 
-/** Action that pushes the Manage Apps & Paths screen */
 function ManageAction({ appsHook, pathsHook }: { appsHook: AppConfigHook; pathsHook: PathsHook }) {
   return (
     <Action.Push
@@ -57,6 +70,12 @@ const SHORTCUT_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 
 function appShortcut(index: number) {
   return index < SHORTCUT_KEYS.length ? { modifiers: ["cmd" as const], key: SHORTCUT_KEYS[index] } : undefined;
+}
+
+function appSetDefaultShortcut(index: number) {
+  return index < SHORTCUT_KEYS.length
+    ? { modifiers: ["cmd" as const, "opt" as const], key: SHORTCUT_KEYS[index] }
+    : undefined;
 }
 
 const SHOW_FILES_KEY = "open-in-app:show-files";
@@ -84,7 +103,7 @@ export default function OpenInApp() {
   const { defaultTerminal } = getPreferenceValues<Preferences.OpenInApp>();
   const appIcon = useAppIconResolver();
   const { sortByFrequency, getFrequency, trackOpen } = useFrecency();
-  const { getLastApp, getSecondLastApp, setLastApp } = useLastApp();
+  const { getDefaultApp, setDefaultApp, setDefaultIfEmpty } = useDefaultApp();
 
   const isLoading = pathsLoading || foldersLoading || appsLoading;
 
@@ -93,7 +112,6 @@ export default function OpenInApp() {
 
   const effectiveSearchTerm = activeApp ? searchTerm : query;
 
-  // When searching: fuzzy sort. When no query: frecency sort (most used first)
   const frecencyTiebreaker = (item: { path: string }) => getFrequency(item.path);
   const filtered = fuzzySearch(folders, effectiveSearchTerm, "name", frecencyTiebreaker);
   const results = effectiveSearchTerm ? filtered : sortByFrequency(filtered);
@@ -152,71 +170,58 @@ export default function OpenInApp() {
       searchBarPlaceholder="Type alias + query (e.g. ij react) or just search..."
     >
       {results.map((folder) => {
-        const lastAppId = getLastApp(folder.path);
-        const secondLastAppId = getSecondLastApp(folder.path);
-        const lastApp = lastAppId ? (apps.find((a) => a.id === lastAppId) ?? null) : null;
-        const secondLastApp = secondLastAppId ? (apps.find((a) => a.id === secondLastAppId) ?? null) : null;
-        const primaryApp = activeApp ?? lastApp ?? apps[0] ?? null;
-        const secondaryApp = !activeApp && secondLastApp?.id !== primaryApp?.id ? secondLastApp : null;
+        const defaultAppId = getDefaultApp(folder.path);
+        const defaultApp = defaultAppId ? (apps.find((a) => a.id === defaultAppId) ?? null) : null;
+
+        const visibleApps = activeApp ? [activeApp] : apps;
 
         return (
           <List.Item
             key={folder.path}
             icon={folder.isDirectory ? Icon.Folder : Icon.Document}
             title={folder.name}
-            subtitle={folder.displayPath}
+            subtitle={folder.name.length > 35 ? "" : parentPath(folder)}
+            keywords={[folder.name]}
             accessories={[
-              ...(activeApp ? [{ text: `[${activeApp.alias}]` }] : []),
-              ...(getFrequency(folder.path) > 0
-                ? [{ text: `${getFrequency(folder.path)}`, tooltip: "Times opened" }]
-                : []),
+              ...(activeApp ? [{ tag: activeApp.alias }] : []),
+              ...(defaultApp
+                ? [{ tag: defaultApp.alias.padEnd(4), tooltip: `Default: ${defaultApp.name}` }]
+                : [{ text: "      " }]),
+              { text: padNum(getFrequency(folder.path), 4), tooltip: "Times opened" },
             ]}
             actions={
               <ActionPanel>
-                {primaryApp && (
+                {/* Open actions — sets default only if none exists */}
+                {visibleApps.map((app) => (
                   <Action
-                    title={`Open in ${primaryApp.name}`}
-                    icon={appIcon(primaryApp)}
-                    shortcut={appShortcut(apps.findIndex((a) => a.id === primaryApp.id))}
+                    key={app.id}
+                    title={`Open in ${app.name}`}
+                    icon={appIcon(app)}
+                    shortcut={appShortcut(apps.findIndex((a) => a.id === app.id))}
                     onAction={async () => {
                       try {
                         await trackOpen(folder.path);
-                        await setLastApp(folder.path, primaryApp.id);
-                        await openInApp(folder.path, primaryApp);
+                        await setDefaultIfEmpty(folder.path, app.id);
+                        await openInApp(folder.path, app);
                       } catch (e) {
                         await showToast({ style: Toast.Style.Failure, title: "Failed to open", message: String(e) });
                       }
                     }}
                   />
-                )}
-                {secondaryApp && (
-                  <Action
-                    title={`Open in ${secondaryApp.name}`}
-                    icon={appIcon(secondaryApp)}
-                    shortcut={appShortcut(apps.findIndex((a) => a.id === secondaryApp.id))}
-                    onAction={async () => {
-                      try {
-                        await trackOpen(folder.path);
-                        await setLastApp(folder.path, secondaryApp.id);
-                        await openInApp(folder.path, secondaryApp);
-                      } catch (e) {
-                        await showToast({ style: Toast.Style.Failure, title: "Failed to open", message: String(e) });
-                      }
-                    }}
-                  />
-                )}
-                {apps
-                  .filter((app) => app.id !== primaryApp?.id && app.id !== secondaryApp?.id)
-                  .map((app) => (
+                ))}
+
+                {/* Set default & open — always updates default */}
+                <ActionPanel.Section title="Set Default & Open">
+                  {visibleApps.map((app) => (
                     <Action
-                      key={app.id}
-                      title={`Open in ${app.name}`}
+                      key={`default-${app.id}`}
+                      title={`Default: ${app.name}`}
                       icon={appIcon(app)}
-                      shortcut={appShortcut(apps.findIndex((a) => a.id === app.id))}
+                      shortcut={appSetDefaultShortcut(apps.findIndex((a) => a.id === app.id))}
                       onAction={async () => {
                         try {
                           await trackOpen(folder.path);
-                          await setLastApp(folder.path, app.id);
+                          await setDefaultApp(folder.path, app.id);
                           await openInApp(folder.path, app);
                         } catch (e) {
                           await showToast({ style: Toast.Style.Failure, title: "Failed to open", message: String(e) });
@@ -224,9 +229,9 @@ export default function OpenInApp() {
                       }}
                     />
                   ))}
+                </ActionPanel.Section>
 
                 <ActionPanel.Section>
-                  {/* Terminal */}
                   {defaultTerminal && (
                     <Action
                       title={`Open in ${defaultTerminal.name}`}
@@ -242,7 +247,6 @@ export default function OpenInApp() {
                       }}
                     />
                   )}
-                  {/* Finder */}
                   <Action.ShowInFinder path={folder.path} shortcut={{ modifiers: ["cmd"], key: "f" }} />
                   <Action.CopyToClipboard
                     title="Copy Path"

@@ -19,6 +19,7 @@ That's it. Open the **Open in App** command and start searching.
 - **Frecency sorting** — folders you open most frequently rise to the top when no query is active
 - **Glob patterns** — configure search paths like `~/work/*/src` or `~/projects/**` for flexible scanning
 - **Multiple apps** — switch between apps from the action panel without leaving Raycast
+- **Per-folder defaults** — each folder remembers which app you normally use for it
 - **Terminal integration** — open any folder in your preferred terminal app
 - **Finder reveal** — quickly show a folder in Finder
 
@@ -38,7 +39,25 @@ Prefix your search with an app alias followed by a space:
 | `ij react`    | Search for "react", open directly in IntelliJ |
 | `code my-api` | Search for "my-api", open directly in VS Code |
 
-The alias-matched app becomes the primary action. Other apps remain available in the action panel.
+When using an alias, only the alias-matched app appears in the action panel.
+
+### Folder Defaults
+
+The first time you open a folder (or file), the app you choose becomes its **default**. Subsequent opens with any app or alias won't change the default — so you can open a project in a different app without losing your usual association.
+
+To explicitly change a folder's default, use the **Set Default & Open** section in the action panel (shortcut `⌥⌘N`).
+
+You can also view and manage all folder defaults from the **Manage Apps & Paths** screen — change the default app via dropdown or remove entries you no longer need.
+
+### List Display
+
+Each result row shows:
+
+- **Folder icon** on the left
+- **Folder name** as the title (long names hide the path to preserve layout)
+- **Parent path** as subtitle (truncated to last 3 segments for deep paths)
+- **Default app alias** as a tag pill on the right
+- **Frecency score** — digit-aligned open count
 
 ### Frecency
 
@@ -46,13 +65,16 @@ When the search bar is empty, folders are sorted by how often you open them. The
 
 ### Keyboard Shortcuts
 
-| Shortcut | Action                                                  |
-| -------- | ------------------------------------------------------- |
-| `↵`      | Open in primary app (alias-matched or first configured) |
-| `⌘T`     | Open in default terminal                                |
-| `⌘F`     | Show in Finder                                          |
-| `⌘C`     | Copy path to clipboard                                  |
-| `⌘⇧M`    | Manage Apps & Paths                                     |
+| Shortcut | Action                                               |
+| -------- | ---------------------------------------------------- |
+| `↵`      | Open in first configured app (or alias-matched)      |
+| `⌘1–9`   | Open in Nth configured app (does not change default) |
+| `⌥⌘1–9`  | Set as default & open in Nth configured app          |
+| `⌘T`     | Open in default terminal                             |
+| `⌘F`     | Show in Finder                                       |
+| `⌘C`     | Copy path to clipboard                               |
+| `⌘.`     | Toggle files/folders view                            |
+| `⌘⇧M`    | Manage Apps & Paths                                  |
 
 ## Configuration
 
@@ -63,6 +85,8 @@ Each app has:
 - **Alias** — a short prefix (no spaces) used to target the app from the search bar
 - **Application** — any installed macOS application
 
+Apps are shown in the action panel in the order you configure them. Reorder with `⌘⇧↑` / `⌘⇧↓` in the Manage Apps screen.
+
 ### Search Paths
 
 Paths tell the extension where to look for folders. You can use:
@@ -71,6 +95,13 @@ Paths tell the extension where to look for folders. You can use:
 - Glob patterns: `~/work/*/src` (matches one level deep), `~/repos/**` (matches any depth)
 
 The following directories are always excluded from results: `node_modules`, `.git`, `.hg`, `.svn`, `dist`, `.cache`, `__pycache__`.
+
+### Folder Defaults
+
+The **Manage Apps & Paths** screen includes a **Folder Defaults** section listing all folders with a saved default app. From there you can:
+
+- **Change** the default app via a dropdown of your configured apps
+- **Remove** a default to reset a folder
 
 ### Preferences
 

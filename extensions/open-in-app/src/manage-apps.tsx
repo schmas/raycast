@@ -17,6 +17,8 @@ import {
 import { useEffect, useState } from "react";
 import { AppConfig, AppConfigHook, useApps } from "./lib/use-apps";
 import { PathItem, PathsHook, displayPath, usePaths } from "./lib/use-paths";
+import { useDefaultApp } from "./lib/use-default-app";
+import { useFrecency } from "./lib/use-frecency";
 
 export default function ManageApps({
   sharedApps,
@@ -41,6 +43,8 @@ function ManageAppsCore({ appsHook, pathsHook }: { appsHook: AppConfigHook; path
   const { apps, isLoading: appsLoading, addApp, updateApp, deleteApp, moveApp } = appsHook;
   const { paths, isLoading: pathsLoading, addPath, updatePath, deletePath, movePath, replacePaths } = pathsHook;
   const { defaultTerminal } = getPreferenceValues<Preferences.ManageApps>();
+  const { defaults, isLoading: defaultsLoading, removeDefaultApp, updateDefaultApp } = useDefaultApp();
+  const { getFrequency } = useFrecency();
 
   async function handleDeleteApp(app: AppConfig) {
     const confirmed = await confirmAlert({
@@ -59,8 +63,25 @@ function ManageAppsCore({ appsHook, pathsHook }: { appsHook: AppConfigHook; path
     if (confirmed) await deletePath(item.id);
   }
 
+  async function handleDeleteDefault(folderPath: string) {
+    const confirmed = await confirmAlert({
+      title: `Remove default for "${displayPath(folderPath)}"?`,
+      primaryAction: { title: "Remove", style: Alert.ActionStyle.Destructive },
+    });
+    if (confirmed) await removeDefaultApp(folderPath);
+  }
+
+  const defaultEntries = Object.entries(defaults)
+    .map(([folderPath, appId]) => ({
+      folderPath,
+      appId,
+      app: apps.find((a) => a.id === appId),
+      frequency: getFrequency(folderPath),
+    }))
+    .sort((a, b) => b.frequency - a.frequency);
+
   return (
-    <List isLoading={appsLoading || pathsLoading}>
+    <List isLoading={appsLoading || pathsLoading || defaultsLoading}>
       {/* Terminal section */}
       <List.Section title="Terminal">
         <List.Item
@@ -176,7 +197,92 @@ function ManageAppsCore({ appsHook, pathsHook }: { appsHook: AppConfigHook; path
           }
         />
       </List.Section>
+
+      {/* Folder Defaults section */}
+      {defaultEntries.length > 0 && (
+        <List.Section title="Folder Defaults" subtitle={`${defaultEntries.length} folders`}>
+          {defaultEntries.map(({ folderPath, app, frequency }) => (
+            <List.Item
+              key={folderPath}
+              icon={app?.appPath ? { fileIcon: app.appPath } : Icon.AppWindow}
+              title={displayPath(folderPath)}
+              subtitle={app?.name ?? "Unknown app"}
+              accessories={[...(frequency > 0 ? [{ text: `${frequency}×`, tooltip: "Times opened" }] : [])]}
+              actions={
+                <ActionPanel>
+                  <Action.Push
+                    title="Change Default App"
+                    icon={Icon.Pencil}
+                    target={
+                      <DefaultAppForm
+                        folderPath={folderPath}
+                        currentAppId={app?.id}
+                        apps={apps}
+                        onSave={updateDefaultApp}
+                      />
+                    }
+                  />
+                  <Action
+                    title="Remove Default"
+                    icon={Icon.Trash}
+                    style={Action.Style.Destructive}
+                    onAction={() => handleDeleteDefault(folderPath)}
+                  />
+                </ActionPanel>
+              }
+            />
+          ))}
+        </List.Section>
+      )}
     </List>
+  );
+}
+
+// --- Default App Form ---
+
+function DefaultAppForm({
+  folderPath,
+  currentAppId,
+  apps,
+  onSave,
+}: {
+  folderPath: string;
+  currentAppId?: string;
+  apps: AppConfig[];
+  onSave: (folderPath: string, appId: string) => Promise<void>;
+}) {
+  const { pop } = useNavigation();
+
+  async function handleSubmit(values: { appId: string }) {
+    if (!values.appId) {
+      await showToast({ style: Toast.Style.Failure, title: "Please select an application" });
+      return;
+    }
+    await onSave(folderPath, values.appId);
+    pop();
+  }
+
+  return (
+    <Form
+      navigationTitle={`Default for ${displayPath(folderPath)}`}
+      actions={
+        <ActionPanel>
+          <Action.SubmitForm title="Save" onSubmit={handleSubmit} />
+        </ActionPanel>
+      }
+    >
+      <Form.Description title="Folder" text={displayPath(folderPath)} />
+      <Form.Dropdown id="appId" title="Default App" defaultValue={currentAppId}>
+        {apps.map((a) => (
+          <Form.Dropdown.Item
+            key={a.id}
+            value={a.id}
+            title={a.name}
+            icon={a.appPath ? { fileIcon: a.appPath } : Icon.AppWindow}
+          />
+        ))}
+      </Form.Dropdown>
+    </Form>
   );
 }
 
@@ -184,7 +290,7 @@ function ManageAppsCore({ appsHook, pathsHook }: { appsHook: AppConfigHook; path
 
 interface AppFormValues {
   alias: string;
-  appId: string; // bundleId or app path, from getApplications()
+  appId: string;
 }
 
 function AppForm({
