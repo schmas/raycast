@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "extensions/**"
+  pull_request:
+    paths:
+      - "extensions/**"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        extension: [open-in-app]
+    defaults:
+      run:
+        working-directory: extensions/${{ matrix.extension }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: extensions/${{ matrix.extension }}/package-lock.json
+      - run: npm ci
+      - run: npx eslint . --max-warnings 0
+      - run: npx prettier --check .
+
+  build:
+    name: Build
+    runs-on: macos-latest
+    needs: lint
+    if: github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        extension: [open-in-app]
+    defaults:
+      run:
+        working-directory: extensions/${{ matrix.extension }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: extensions/${{ matrix.extension }}/package-lock.json
+      - run: npm ci
+      - run: npx ray build -e dist
