@@ -66,11 +66,12 @@ jobs:
       - name: Get last tagged version
         id: last_tag
         run: |
-          TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]' | head -1 || echo "")
+          PREFIX="${{ matrix.extension }}-v"
+          TAG=$(git tag --sort=-v:refname | grep -E "^${PREFIX}[0-9]" | head -1 || echo "")
           if [ -z "$TAG" ]; then
             echo "version=0.0.0" >> "$GITHUB_OUTPUT"
           else
-            echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+            echo "version=${TAG#$PREFIX}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Check if version was manually bumped
@@ -91,7 +92,7 @@ jobs:
           if [ "$LAST_TAG" = "0.0.0" ]; then
             RANGE="HEAD"
           else
-            RANGE="v${LAST_TAG}..HEAD"
+            RANGE="${{ matrix.extension }}-v${LAST_TAG}..HEAD"
           fi
 
           COMMITS=$(git log $RANGE --pretty=format:"%s" -- . || true)
@@ -142,7 +143,7 @@ jobs:
           if [ "$LAST_TAG" = "0.0.0" ]; then
             RANGE="HEAD"
           else
-            RANGE="v${LAST_TAG}..HEAD"
+            RANGE="${{ matrix.extension }}-v${LAST_TAG}..HEAD"
           fi
 
           {
@@ -187,7 +188,7 @@ jobs:
         run: |
           cd ${{ github.workspace }}
           VERSION="${{ steps.version.outputs.version }}"
-          TAG="v${VERSION}"
+          TAG="${{ matrix.extension }}-v${VERSION}"
           if ! git rev-parse "$TAG" >/dev/null 2>&1; then
             git tag "$TAG"
             git push origin "$TAG"
@@ -198,8 +199,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: v${{ steps.version.outputs.version }}
+          tag_name: ${{ matrix.extension }}-v${{ steps.version.outputs.version }}
+          name: "${{ matrix.extension }} v${{ steps.version.outputs.version }}"
           body: ${{ steps.changelog.outputs.entry }}
           generate_release_notes: false
         env:
