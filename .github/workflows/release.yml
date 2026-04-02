@@ -15,6 +15,7 @@ jobs:
     name: Version & Release
     runs-on: ubuntu-latest
     strategy:
+      max-parallel: 1
       matrix:
         extension: [open-in-app, keeping-you-awake-control]
     defaults:
@@ -153,6 +154,7 @@ jobs:
           git add extensions/${{ matrix.extension }}/package.json extensions/${{ matrix.extension }}/CHANGELOG.md
           git diff --cached --quiet && echo "No changes to commit" && exit 0
           git commit -m "chore(${{ matrix.extension }}): release v${{ steps.version.outputs.version }}"
+          git pull --rebase
           git push
 
       - name: Tag and release
