@@ -16,7 +16,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        extension: [open-in-app]
+        extension: [open-in-app, keeping-you-awake-control]
     defaults:
       run:
         working-directory: extensions/${{ matrix.extension }}

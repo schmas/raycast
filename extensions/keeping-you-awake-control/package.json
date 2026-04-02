@@ -1,0 +1,104 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "keeping-you-awake-control",
+  "title": "Keeping You Awake Control",
+  "description": "Control KeepingYouAwake — toggle, activate for hours/minutes, or deactivate. Requires KeepingYouAwake (https://keepingyouawake.app/).",
+  "icon": "extension-icon.png",
+  "author": "schmas",
+  "owner": "shmas-corp",
+  "platforms": [
+    "macOS"
+  ],
+  "categories": [
+    "Productivity"
+  ],
+  "license": "MIT",
+  "preferences": [
+    {
+      "name": "defaultHours",
+      "title": "Default Hours",
+      "description": "Hours to keep awake when using the Activate command. Leave empty to activate indefinitely.",
+      "type": "textfield",
+      "required": false,
+      "default": "5"
+    }
+  ],
+  "commands": [
+    {
+      "name": "kya-activate",
+      "title": "Activate",
+      "subtitle": "KYA",
+      "description": "Activate KeepingYouAwake for the configured default hours",
+      "mode": "no-view",
+      "alias": "ka"
+    },
+    {
+      "name": "kya-toggle",
+      "title": "Toggle",
+      "subtitle": "KYA",
+      "description": "Toggle KeepingYouAwake on/off",
+      "mode": "no-view",
+      "alias": "kt"
+    },
+    {
+      "name": "kya-deactivate",
+      "title": "Deactivate",
+      "subtitle": "KYA",
+      "description": "Deactivate KeepingYouAwake",
+      "mode": "no-view",
+      "alias": "kd"
+    },
+    {
+      "name": "kya-hours",
+      "title": "Activate for Hours",
+      "subtitle": "KYA",
+      "description": "Activate KeepingYouAwake for a specified number of hours",
+      "mode": "no-view",
+      "alias": "kh",
+      "arguments": [
+        {
+          "name": "hours",
+          "type": "text",
+          "required": true,
+          "placeholder": "Hours"
+        }
+      ]
+    },
+    {
+      "name": "kya-minutes",
+      "title": "Activate for Minutes",
+      "subtitle": "KYA",
+      "description": "Activate KeepingYouAwake for a specified number of minutes",
+      "mode": "no-view",
+      "alias": "km",
+      "arguments": [
+        {
+          "name": "minutes",
+          "type": "text",
+          "required": true,
+          "placeholder": "Minutes"
+        }
+      ]
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.104.11",
+    "@raycast/utils": "^1.17.0"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.0.4",
+    "@types/node": "22.13.10",
+    "@types/react": "19.0.10",
+    "eslint": "^9.22.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint",
+    "prepublishOnly": "echo \"\\n\\nIt seems like you are trying to publish the Raycast extension to npm.\\n\\nIf you did intend to publish it to npm, remove the \\`prepublishOnly\\` script and rerun \\`npm publish\\` again.\\nIf you wanted to publish it to the Raycast Store instead, use \\`npm run publish\\` instead.\\n\\n\" && exit 1",
+    "publish": "npx @raycast/api@latest publish"
+  }
+}
