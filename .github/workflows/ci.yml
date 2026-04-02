@@ -201,7 +201,10 @@ jobs:
         with:
           tag_name: ${{ matrix.extension }}-v${{ steps.version.outputs.version }}
           name: "${{ matrix.extension }} v${{ steps.version.outputs.version }}"
-          body: ${{ steps.changelog.outputs.entry }}
+          body: |
+            **Extension:** `${{ matrix.extension }}`
+
+            ${{ steps.changelog.outputs.entry }}
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
