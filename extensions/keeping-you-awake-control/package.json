@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "keeping-you-awake-control",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "title": "Keeping You Awake Control",
   "description": "Control KeepingYouAwake — toggle, activate for hours/minutes, or deactivate. Requires KeepingYouAwake (https://keepingyouawake.app/).",
   "icon": "extension-icon.png",
