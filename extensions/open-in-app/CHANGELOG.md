@@ -1,5 +1,9 @@
 # Open in App Changelog
 
+## [1.2.5] - 2026-04-20
+
+- fix(open-in-app): migrate to useCachedState for live UI sync
+
 ## [1.2.4] - 2026-04-02
 
 ## [1.2.3] - 2026-04-02
