@@ -1,7 +1,9 @@
 import { LocalStorage } from "@raycast/api";
-import { useEffect, useRef, useState } from "react";
+import { useCachedState } from "@raycast/utils";
+import { useEffect, useState } from "react";
 
-const STORAGE_KEY = "open-in-app:last-app";
+const CACHE_KEY = "default-apps";
+const LEGACY_STORAGE_KEY = "open-in-app:last-app";
 
 type DefaultAppMap = Record<string, string>;
 
@@ -12,63 +14,56 @@ interface DefaultAppHook {
   setDefaultApp: (folderPath: string, appId: string) => Promise<void>;
   setDefaultIfEmpty: (folderPath: string, appId: string) => Promise<void>;
   removeDefaultApp: (folderPath: string) => Promise<void>;
-  updateDefaultApp: (folderPath: string, appId: string) => Promise<void>;
 }
 
 export function useDefaultApp(): DefaultAppHook {
-  const [defaults, setDefaults] = useState<DefaultAppMap>({});
+  const [defaults, setDefaults] = useCachedState<DefaultAppMap>(CACHE_KEY, {});
   const [isLoading, setIsLoading] = useState(true);
-  const mapRef = useRef<DefaultAppMap>({});
 
   useEffect(() => {
-    LocalStorage.getItem<string>(STORAGE_KEY).then((raw) => {
-      try {
-        const parsed = raw ? JSON.parse(raw) : {};
-        const migrated: DefaultAppMap = {};
-        for (const [path, value] of Object.entries(parsed)) {
-          if (typeof value === "string") {
-            migrated[path] = value;
-          } else if (value && typeof value === "object" && "last" in value) {
-            migrated[path] = (value as { last: string }).last;
+    (async () => {
+      const raw = await LocalStorage.getItem<string>(LEGACY_STORAGE_KEY);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          const migrated: DefaultAppMap = {};
+          for (const [path, value] of Object.entries(parsed)) {
+            if (typeof value === "string") {
+              migrated[path] = value;
+            } else if (value && typeof value === "object" && "last" in value) {
+              migrated[path] = (value as { last: string }).last;
+            }
           }
+          setDefaults((current) => (Object.keys(current).length === 0 ? migrated : current));
+        } catch {
+          /* ignore */
         }
-        mapRef.current = migrated;
-        setDefaults(migrated);
-      } catch {
-        LocalStorage.removeItem(STORAGE_KEY);
+        await LocalStorage.removeItem(LEGACY_STORAGE_KEY);
       }
       setIsLoading(false);
-    });
+    })();
   }, []);
 
-  async function persist(updated: DefaultAppMap) {
-    mapRef.current = updated;
-    setDefaults(updated);
-    await LocalStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  }
-
   function getDefaultApp(folderPath: string): string | null {
-    return mapRef.current[folderPath] ?? null;
+    return defaults[folderPath] ?? null;
   }
 
-  async function setDefaultApp(folderPath: string, appId: string): Promise<void> {
-    await persist({ ...mapRef.current, [folderPath]: appId });
+  async function setDefaultApp(folderPath: string, appId: string) {
+    setDefaults((current) => ({ ...current, [folderPath]: appId }));
   }
 
-  async function setDefaultIfEmpty(folderPath: string, appId: string): Promise<void> {
-    if (mapRef.current[folderPath]) return;
-    await persist({ ...mapRef.current, [folderPath]: appId });
+  async function setDefaultIfEmpty(folderPath: string, appId: string) {
+    setDefaults((current) => (current[folderPath] ? current : { ...current, [folderPath]: appId }));
   }
 
-  async function updateDefaultApp(folderPath: string, appId: string): Promise<void> {
-    await persist({ ...mapRef.current, [folderPath]: appId });
+  async function removeDefaultApp(folderPath: string) {
+    setDefaults((current) => {
+      if (!(folderPath in current)) return current;
+      const copy = { ...current };
+      delete copy[folderPath];
+      return copy;
+    });
   }
 
-  async function removeDefaultApp(folderPath: string): Promise<void> {
-    const copy = { ...mapRef.current };
-    delete copy[folderPath];
-    await persist(copy);
-  }
-
-  return { defaults, isLoading, getDefaultApp, setDefaultApp, setDefaultIfEmpty, removeDefaultApp, updateDefaultApp };
+  return { defaults, isLoading, getDefaultApp, setDefaultApp, setDefaultIfEmpty, removeDefaultApp };
 }

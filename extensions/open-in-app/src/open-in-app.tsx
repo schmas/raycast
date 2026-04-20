@@ -18,9 +18,9 @@ import { useFrecency } from "./lib/use-frecency";
 import { useDefaultApp } from "./lib/use-default-app";
 import { openInApp } from "./lib/open-in-app";
 import { parseAlias } from "./lib/parse-alias";
-import { AppConfig, AppConfigHook, useApps } from "./lib/use-apps";
+import { AppConfig, useApps } from "./lib/use-apps";
 import { FilterMode, FolderItem, useFolders } from "./lib/use-folders";
-import { PathsHook, usePaths } from "./lib/use-paths";
+import { usePaths } from "./lib/use-paths";
 
 const FIGURE_SPACE = "\u2007"; // same width as a digit
 
@@ -55,12 +55,12 @@ function useAppIconResolver() {
   };
 }
 
-function ManageAction({ appsHook, pathsHook }: { appsHook: AppConfigHook; pathsHook: PathsHook }) {
+function ManageAction() {
   return (
     <Action.Push
       title="Manage Apps & Paths"
       icon={Icon.Gear}
-      target={<ManageApps sharedApps={appsHook} sharedPaths={pathsHook} />}
+      target={<ManageApps />}
       shortcut={{ modifiers: ["cmd", "shift"], key: "m" }}
     />
   );
@@ -90,8 +90,7 @@ const FILTER_LABELS: Record<FilterMode, string> = {
 export default function OpenInApp() {
   const [query, setQuery] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("folders");
-  const pathsHook = usePaths();
-  const { paths, isLoading: pathsLoading } = pathsHook;
+  const { paths, isLoading: pathsLoading } = usePaths();
   const { folders, isLoading: foldersLoading } = useFolders(paths, filterMode);
 
   useEffect(() => {
@@ -110,8 +109,7 @@ export default function OpenInApp() {
       title: `Showing ${FILTER_LABELS[next]}`,
     });
   }
-  const appsHook = useApps();
-  const { apps, isLoading: appsLoading } = appsHook;
+  const { apps, isLoading: appsLoading } = useApps();
   const { defaultTerminal } = getPreferenceValues<Preferences.OpenInApp>();
   const appIcon = useAppIconResolver();
   const { sortByFrequency, getFrequency, trackOpen } = useFrecency();
@@ -153,7 +151,7 @@ export default function OpenInApp() {
             icon={Icon.AppWindow}
             actions={
               <ActionPanel>
-                <ManageAction appsHook={appsHook} pathsHook={pathsHook} />
+                <ManageAction />
               </ActionPanel>
             }
           />
@@ -170,7 +168,7 @@ export default function OpenInApp() {
           description="Press ⌘⇧M to open Manage Apps & Paths"
           actions={
             <ActionPanel>
-              <ManageAction appsHook={appsHook} pathsHook={pathsHook} />
+              <ManageAction />
             </ActionPanel>
           }
         />
@@ -284,7 +282,7 @@ export default function OpenInApp() {
                     shortcut={{ modifiers: ["cmd"], key: "." }}
                     onAction={cycleFilterMode}
                   />
-                  <ManageAction appsHook={appsHook} pathsHook={pathsHook} />
+                  <ManageAction />
                 </ActionPanel.Section>
               </ActionPanel>
             }

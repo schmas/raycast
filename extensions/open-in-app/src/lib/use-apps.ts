@@ -1,6 +1,7 @@
 import { LocalStorage } from "@raycast/api";
+import { useCachedState } from "@raycast/utils";
 import { randomUUID } from "crypto";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 export interface AppConfig {
   id: string;
@@ -19,68 +20,51 @@ export interface AppConfigHook {
   moveApp: (id: string, direction: "up" | "down") => Promise<void>;
 }
 
-const STORAGE_KEY = "open-in-app:apps";
+const CACHE_KEY = "apps";
+const LEGACY_STORAGE_KEY = "open-in-app:apps";
 
 export function useApps(): AppConfigHook {
-  const [apps, setApps] = useState<AppConfig[]>([]);
+  const [apps, setApps] = useCachedState<AppConfig[]>(CACHE_KEY, []);
   const [isLoading, setIsLoading] = useState(true);
-  const appsRef = useRef<AppConfig[]>([]);
-
-  async function load() {
-    const raw = await LocalStorage.getItem<string>(STORAGE_KEY);
-    try {
-      const parsed: AppConfig[] = raw ? JSON.parse(raw) : [];
-      appsRef.current = parsed;
-      setApps(parsed);
-    } catch {
-      // corrupted storage — reset
-      await LocalStorage.removeItem(STORAGE_KEY);
-      appsRef.current = [];
-      setApps([]);
-    }
-    setIsLoading(false);
-  }
-
-  async function persist(updated: AppConfig[]) {
-    await LocalStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  }
 
   useEffect(() => {
-    load();
+    (async () => {
+      const raw = await LocalStorage.getItem<string>(LEGACY_STORAGE_KEY);
+      if (raw) {
+        try {
+          const parsed: AppConfig[] = JSON.parse(raw);
+          setApps((current) => (current.length === 0 ? parsed : current));
+        } catch {
+          /* ignore */
+        }
+        await LocalStorage.removeItem(LEGACY_STORAGE_KEY);
+      }
+      setIsLoading(false);
+    })();
   }, []);
 
   async function addApp(data: Omit<AppConfig, "id">) {
-    const updated = [...appsRef.current, { ...data, id: randomUUID() }];
-    appsRef.current = updated;
-    setApps(updated);
-    await persist(updated);
+    setApps((current) => [...current, { ...data, id: randomUUID() }]);
   }
 
   async function updateApp(app: AppConfig) {
-    const updated = appsRef.current.map((a) => (a.id === app.id ? app : a));
-    appsRef.current = updated;
-    setApps(updated);
-    await persist(updated);
+    setApps((current) => current.map((a) => (a.id === app.id ? app : a)));
   }
 
   async function deleteApp(id: string) {
-    const updated = appsRef.current.filter((a) => a.id !== id);
-    appsRef.current = updated;
-    setApps(updated);
-    await persist(updated);
+    setApps((current) => current.filter((a) => a.id !== id));
   }
 
   async function moveApp(id: string, direction: "up" | "down") {
-    const current = appsRef.current;
-    const idx = current.findIndex((a) => a.id === id);
-    if (idx === -1) return;
-    const newIdx = direction === "up" ? idx - 1 : idx + 1;
-    if (newIdx < 0 || newIdx >= current.length) return;
-    const updated = [...current];
-    [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
-    appsRef.current = updated;
-    setApps(updated);
-    await persist(updated);
+    setApps((current) => {
+      const idx = current.findIndex((a) => a.id === id);
+      if (idx === -1) return current;
+      const newIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (newIdx < 0 || newIdx >= current.length) return current;
+      const updated = [...current];
+      [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
+      return updated;
+    });
   }
 
   return { apps, isLoading, addApp, updateApp, deleteApp, moveApp };

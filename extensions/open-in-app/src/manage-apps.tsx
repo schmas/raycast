@@ -15,35 +15,16 @@ import {
   useNavigation,
 } from "@raycast/api";
 import { useEffect, useState } from "react";
-import { AppConfig, AppConfigHook, useApps } from "./lib/use-apps";
-import { PathItem, PathsHook, displayPath, usePaths } from "./lib/use-paths";
+import { AppConfig, useApps } from "./lib/use-apps";
+import { PathItem, displayPath, usePaths } from "./lib/use-paths";
 import { useDefaultApp } from "./lib/use-default-app";
 import { useFrecency } from "./lib/use-frecency";
 
-export default function ManageApps({
-  sharedApps,
-  sharedPaths,
-}: {
-  sharedApps?: AppConfigHook;
-  sharedPaths?: PathsHook;
-} = {}) {
-  if (sharedApps && sharedPaths) {
-    return <ManageAppsCore appsHook={sharedApps} pathsHook={sharedPaths} />;
-  }
-  return <StandaloneManageApps />;
-}
-
-function StandaloneManageApps() {
-  const appsHook = useApps();
-  const pathsHook = usePaths();
-  return <ManageAppsCore appsHook={appsHook} pathsHook={pathsHook} />;
-}
-
-function ManageAppsCore({ appsHook, pathsHook }: { appsHook: AppConfigHook; pathsHook: PathsHook }) {
-  const { apps, isLoading: appsLoading, addApp, updateApp, deleteApp, moveApp } = appsHook;
-  const { paths, isLoading: pathsLoading, addPath, updatePath, deletePath, movePath, replacePaths } = pathsHook;
+export default function ManageApps() {
+  const { apps, isLoading: appsLoading, addApp, updateApp, deleteApp, moveApp } = useApps();
+  const { paths, isLoading: pathsLoading, addPath, updatePath, deletePath, movePath, replacePaths } = usePaths();
   const { defaultTerminal } = getPreferenceValues<Preferences.ManageApps>();
-  const { defaults, isLoading: defaultsLoading, removeDefaultApp, updateDefaultApp } = useDefaultApp();
+  const { defaults, isLoading: defaultsLoading, removeDefaultApp, setDefaultApp } = useDefaultApp();
   const { getFrequency } = useFrecency();
 
   async function handleDeleteApp(app: AppConfig) {
@@ -218,7 +199,7 @@ function ManageAppsCore({ appsHook, pathsHook }: { appsHook: AppConfigHook; path
                         folderPath={folderPath}
                         currentAppId={app?.id}
                         apps={apps}
-                        onSave={updateDefaultApp}
+                        onSave={setDefaultApp}
                       />
                     }
                   />
