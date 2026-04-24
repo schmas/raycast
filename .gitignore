@@ -51,4 +51,7 @@ logs/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Local development aids (intentionally untracked — do NOT `git add -f`)
 AGENTS.md
+**/AGENTS.md
