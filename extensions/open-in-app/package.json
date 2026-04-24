@@ -44,7 +44,8 @@
     "@raycast/api": "^1.104.9",
     "@raycast/utils": "^1.17.0",
     "fuzzysort": "^3.1.0",
-    "glob": "^10.4.5"
+    "glob": "^10.4.5",
+    "minimatch": "^9.0.9"
   },
   "devDependencies": {
     "@raycast/eslint-config": "^2.0.4",

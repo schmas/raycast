@@ -3,6 +3,7 @@ import {
   ActionPanel,
   Alert,
   Application,
+  Color,
   Form,
   Icon,
   List,
@@ -128,13 +129,25 @@ export default function ManageApps() {
             icon={Icon.Folder}
             title={displayPath(item.path)}
             subtitle={item.path}
-            accessories={item.maxDepth !== undefined ? [{ text: `depth: ${item.maxDepth}` }] : []}
+            accessories={[
+              ...(item.maxDepth !== undefined ? [{ text: `depth: ${item.maxDepth}` }] : []),
+              ...(item.defaultAppId
+                ? apps.some((a) => a.id === item.defaultAppId)
+                  ? [
+                      {
+                        tag: `@${apps.find((a) => a.id === item.defaultAppId)!.alias}`,
+                        tooltip: `Default: ${apps.find((a) => a.id === item.defaultAppId)!.name}`,
+                      },
+                    ]
+                  : [{ tag: { value: "@missing", color: Color.Red }, tooltip: "The referenced app has been deleted" }]
+                : []),
+            ]}
             actions={
               <ActionPanel>
                 <Action.Push
                   title="Edit"
                   icon={Icon.Pencil}
-                  target={<PathForm item={item} onSave={(p, d) => updatePath(item.id, p, d)} />}
+                  target={<PathForm item={item} apps={apps} onSave={(p, d, a) => updatePath(item.id, p, d, a)} />}
                 />
                 <Action
                   title="Move up"
@@ -164,7 +177,10 @@ export default function ManageApps() {
           icon={Icon.TextCursor}
           actions={
             <ActionPanel>
-              <Action.Push title="Edit All Paths" target={<PathsBulkForm paths={paths} onSave={replacePaths} />} />
+              <Action.Push
+                title="Edit All Paths"
+                target={<PathsBulkForm paths={paths} apps={apps} onSave={replacePaths} />}
+              />
             </ActionPanel>
           }
         />
@@ -173,7 +189,10 @@ export default function ManageApps() {
           icon={Icon.Plus}
           actions={
             <ActionPanel>
-              <Action.Push title="Add Search Path" target={<PathForm onSave={(p, d) => addPath(p, d)} />} />
+              <Action.Push
+                title="Add Search Path"
+                target={<PathForm apps={apps} onSave={(p, d, a) => addPath(p, d, a)} />}
+              />
             </ActionPanel>
           }
         />
@@ -353,35 +372,90 @@ function AppForm({
 
 function PathsBulkForm({
   paths,
+  apps,
   onSave,
 }: {
   paths: PathItem[];
-  onSave: (items: { path: string; maxDepth?: number }[]) => Promise<void>;
+  apps: AppConfig[];
+  onSave: (items: { path: string; maxDepth?: number; defaultAppId?: string }[]) => Promise<void>;
 }) {
   const { pop } = useNavigation();
 
-  function serialize(items: PathItem[]): string {
-    return items.map((p) => (p.maxDepth !== undefined ? `${p.path},${p.maxDepth}` : p.path)).join("\n");
+  function aliasFor(appId: string | undefined): string | undefined {
+    if (!appId) return undefined;
+    return apps.find((a) => a.id === appId)?.alias;
   }
 
-  function parseLine(line: string): { path: string; maxDepth?: number } {
-    const commaIdx = line.lastIndexOf(",");
+  function serialize(items: PathItem[]): string {
+    return items
+      .map((p) => {
+        let line = p.path;
+        if (p.maxDepth !== undefined) line += `,${p.maxDepth}`;
+        const alias = aliasFor(p.defaultAppId);
+        if (alias) line += ` @${alias}`;
+        return line;
+      })
+      .join("\n");
+  }
+
+  /**
+   * Parse a single bulk-editor line. Recognised shapes:
+   *   path
+   *   path,depth
+   *   path @alias
+   *   path,depth @alias
+   * Alias may appear before or after the (path,depth) run in any whitespace-separated position.
+   */
+  function parseLine(
+    line: string,
+  ): { ok: true; value: { path: string; maxDepth?: number; defaultAppId?: string } } | { ok: false; error: string } {
+    const aliasMatch = line.match(/\s@(\S+)/);
+    let alias: string | undefined;
+    let head = line;
+    if (aliasMatch) {
+      alias = aliasMatch[1];
+      head = (line.slice(0, aliasMatch.index) + line.slice((aliasMatch.index ?? 0) + aliasMatch[0].length)).trim();
+    } else {
+      head = line.trim();
+    }
+
+    let path = head;
+    let maxDepth: number | undefined;
+    const commaIdx = head.lastIndexOf(",");
     if (commaIdx !== -1) {
-      const depthStr = line.slice(commaIdx + 1).trim();
+      const depthStr = head.slice(commaIdx + 1).trim();
       const depth = parseInt(depthStr, 10);
-      if (!isNaN(depth) && depth > 0 && String(depth) === depthStr.trim()) {
-        return { path: line.slice(0, commaIdx).trim(), maxDepth: depth };
+      if (!isNaN(depth) && depth > 0 && String(depth) === depthStr) {
+        path = head.slice(0, commaIdx).trim();
+        maxDepth = depth;
       }
     }
-    return { path: line };
+
+    if (!path) return { ok: false, error: "empty path" };
+
+    let defaultAppId: string | undefined;
+    if (alias !== undefined) {
+      const app = apps.find((a) => a.alias === alias);
+      if (!app) return { ok: false, error: `Unknown alias "@${alias}"` };
+      defaultAppId = app.id;
+    }
+
+    return { ok: true, value: { path, maxDepth, defaultAppId } };
   }
 
   async function handleSubmit(values: { text: string }) {
-    const items = values.text
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean)
-      .map(parseLine);
+    const lines = values.text.split("\n").map((l) => l.trim());
+    const items: { path: string; maxDepth?: number; defaultAppId?: string }[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line) continue;
+      const parsed = parseLine(line);
+      if (!parsed.ok) {
+        await showToast({ style: Toast.Style.Failure, title: `Line ${i + 1}: ${parsed.error}` });
+        return;
+      }
+      items.push(parsed.value);
+    }
     await onSave(items);
     pop();
   }
@@ -398,9 +472,9 @@ function PathsBulkForm({
       <Form.TextArea
         id="text"
         title="Paths"
-        placeholder={"~/projects\n~/work/*/src,3\n~/.config"}
+        placeholder={"~/projects\n~/work/*/src,3\n~/projects/work/aaa @ij"}
         defaultValue={serialize(paths)}
-        info="One path per line. Append ,N to set max depth (e.g. ~/projects/**/*,3)."
+        info="One path per line. Append ,N for max depth. Append @alias to set a default app (alias must match a configured app)."
       />
     </Form>
   );
@@ -410,20 +484,25 @@ function PathsBulkForm({
 
 function PathForm({
   item,
+  apps,
   onSave,
 }: {
   item?: PathItem;
-  onSave: (path: string, maxDepth: number | undefined) => Promise<void>;
+  apps: AppConfig[];
+  onSave: (path: string, maxDepth: number | undefined, defaultAppId: string | undefined) => Promise<void>;
 }) {
   const { pop } = useNavigation();
   const [pathText, setPathText] = useState(item?.path ?? "");
 
-  async function handleSubmit(values: { pathText: string; maxDepth: string }) {
+  const hasGlob = /[*?[\]{}]/.test(pathText);
+
+  async function handleSubmit(values: { pathText: string; maxDepth: string; defaultAppId: string }) {
     const trimmed = values.pathText.trim();
     if (!trimmed) return;
     const parsed = parseInt(values.maxDepth.trim(), 10);
     const maxDepth = !isNaN(parsed) && parsed > 0 ? parsed : undefined;
-    await onSave(trimmed, maxDepth);
+    const defaultAppId = values.defaultAppId ? values.defaultAppId : undefined;
+    await onSave(trimmed, maxDepth, defaultAppId);
     pop();
   }
 
@@ -459,6 +538,26 @@ function PathForm({
         defaultValue={item?.maxDepth?.toString() ?? ""}
         info="Limit how many levels deep to scan. Useful with ** patterns. Leave empty for no limit."
       />
+      <Form.Dropdown
+        id="defaultAppId"
+        title="Default App"
+        defaultValue={item?.defaultAppId ?? ""}
+        info={
+          hasGlob
+            ? "Applied as the default for folders whose path (or any ancestor) matches this glob. Overridden by per-folder defaults."
+            : "Applied as the default for folders under this path. Overridden by per-folder defaults."
+        }
+      >
+        <Form.Dropdown.Item value="" title="(none)" />
+        {apps.map((a) => (
+          <Form.Dropdown.Item
+            key={a.id}
+            value={a.id}
+            title={a.name}
+            icon={a.appPath ? { fileIcon: a.appPath } : Icon.AppWindow}
+          />
+        ))}
+      </Form.Dropdown>
     </Form>
   );
 }

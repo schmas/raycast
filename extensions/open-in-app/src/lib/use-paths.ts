@@ -8,16 +8,22 @@ export interface PathItem {
   id: string;
   path: string; // ~ or absolute, may contain glob chars
   maxDepth?: number;
+  defaultAppId?: string;
 }
 
 export interface PathsHook {
   paths: PathItem[];
   isLoading: boolean;
-  addPath: (path: string, maxDepth?: number) => Promise<void>;
-  updatePath: (id: string, newPath: string, maxDepth: number | undefined) => Promise<void>;
+  addPath: (path: string, maxDepth?: number, defaultAppId?: string) => Promise<void>;
+  updatePath: (
+    id: string,
+    newPath: string,
+    maxDepth: number | undefined,
+    defaultAppId: string | undefined,
+  ) => Promise<void>;
   deletePath: (id: string) => Promise<void>;
   movePath: (id: string, direction: "up" | "down") => Promise<void>;
-  replacePaths: (items: { path: string; maxDepth?: number }[]) => Promise<void>;
+  replacePaths: (items: { path: string; maxDepth?: number; defaultAppId?: string }[]) => Promise<void>;
 }
 
 const CACHE_KEY = "paths";
@@ -49,19 +55,27 @@ export function usePaths(): PathsHook {
     })();
   }, []);
 
-  async function addPath(path: string, maxDepth?: number) {
+  async function addPath(path: string, maxDepth?: number, defaultAppId?: string) {
     const item: PathItem = { id: randomUUID(), path };
     if (maxDepth !== undefined) item.maxDepth = maxDepth;
+    if (defaultAppId !== undefined) item.defaultAppId = defaultAppId;
     setPaths((current) => [...current, item]);
   }
 
-  async function updatePath(id: string, newPath: string, maxDepth: number | undefined) {
+  async function updatePath(
+    id: string,
+    newPath: string,
+    maxDepth: number | undefined,
+    defaultAppId: string | undefined,
+  ) {
     setPaths((current) =>
       current.map((p) => {
         if (p.id !== id) return p;
         const next: PathItem = { ...p, path: newPath };
         if (maxDepth !== undefined) next.maxDepth = maxDepth;
         else delete next.maxDepth;
+        if (defaultAppId !== undefined) next.defaultAppId = defaultAppId;
+        else delete next.defaultAppId;
         return next;
       }),
     );
@@ -83,13 +97,14 @@ export function usePaths(): PathsHook {
     });
   }
 
-  async function replacePaths(items: { path: string; maxDepth?: number }[]) {
+  async function replacePaths(items: { path: string; maxDepth?: number; defaultAppId?: string }[]) {
     setPaths((current) => {
       const existingByPath = new Map(current.map((p) => [p.path, p]));
-      return items.map(({ path, maxDepth }) => {
+      return items.map(({ path, maxDepth, defaultAppId }) => {
         const existing = existingByPath.get(path);
         const next: PathItem = { id: existing?.id ?? randomUUID(), path };
         if (maxDepth !== undefined) next.maxDepth = maxDepth;
+        if (defaultAppId !== undefined) next.defaultAppId = defaultAppId;
         return next;
       });
     });

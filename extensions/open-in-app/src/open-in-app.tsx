@@ -21,6 +21,7 @@ import { parseAlias } from "./lib/parse-alias";
 import { AppConfig, useApps } from "./lib/use-apps";
 import { FilterMode, FolderItem, useFolders } from "./lib/use-folders";
 import { usePaths } from "./lib/use-paths";
+import { resolveDefaultApp } from "./lib/resolve-default-app";
 
 const FIGURE_SPACE = "\u2007"; // same width as a digit
 
@@ -185,8 +186,9 @@ export default function OpenInApp() {
       navigationTitle={activeApp ? `Open in ${activeApp.name}` : undefined}
     >
       {results.map((folder) => {
-        const defaultAppId = getDefaultApp(folder.path);
-        const defaultApp = defaultAppId ? (apps.find((a) => a.id === defaultAppId) ?? null) : null;
+        const explicitDefaultId = getDefaultApp(folder.path);
+        const resolved = resolveDefaultApp(folder.path, paths, apps, explicitDefaultId);
+        const defaultApp = resolved.appId ? (apps.find((a) => a.id === resolved.appId) ?? null) : null;
 
         const orderedApps =
           defaultApp && !activeApp ? [defaultApp, ...apps.filter((a) => a.id !== defaultApp.id)] : apps;
@@ -203,7 +205,15 @@ export default function OpenInApp() {
               ...(activeApp
                 ? [{ tag: activeApp.alias }]
                 : defaultApp
-                  ? [{ tag: defaultApp.alias.padEnd(4), tooltip: `Default: ${defaultApp.name}` }]
+                  ? [
+                      {
+                        tag: defaultApp.alias.padEnd(4),
+                        tooltip:
+                          resolved.source === "rule" && resolved.matchedRule
+                            ? `Default: ${defaultApp.name} (via ${resolved.matchedRule.path})`
+                            : `Default: ${defaultApp.name}`,
+                      },
+                    ]
                   : [{ text: "      " }]),
               { text: padNum(getFrequency(folder.path), 4), tooltip: "Times opened" },
             ]}
@@ -219,7 +229,9 @@ export default function OpenInApp() {
                     onAction={async () => {
                       try {
                         await trackOpen(folder.path);
-                        await setDefaultIfEmpty(folder.path, app.id);
+                        if (resolved.source !== "rule") {
+                          await setDefaultIfEmpty(folder.path, app.id);
+                        }
                         await openInApp(folder.path, app);
                       } catch (e) {
                         await showToast({ style: Toast.Style.Failure, title: "Failed to open", message: String(e) });
