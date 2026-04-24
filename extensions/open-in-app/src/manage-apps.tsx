@@ -134,7 +134,7 @@ export default function ManageApps() {
                 <Action.Push
                   title="Edit"
                   icon={Icon.Pencil}
-                  target={<PathForm item={item} onSave={(p, d) => updatePath(item.id, p, d)} />}
+                  target={<PathForm item={item} apps={apps} onSave={(p, d, a) => updatePath(item.id, p, d, a)} />}
                 />
                 <Action
                   title="Move up"
@@ -173,7 +173,10 @@ export default function ManageApps() {
           icon={Icon.Plus}
           actions={
             <ActionPanel>
-              <Action.Push title="Add Search Path" target={<PathForm onSave={(p, d) => addPath(p, d)} />} />
+              <Action.Push
+                title="Add Search Path"
+                target={<PathForm apps={apps} onSave={(p, d, a) => addPath(p, d, a)} />}
+              />
             </ActionPanel>
           }
         />
@@ -410,20 +413,25 @@ function PathsBulkForm({
 
 function PathForm({
   item,
+  apps,
   onSave,
 }: {
   item?: PathItem;
-  onSave: (path: string, maxDepth: number | undefined) => Promise<void>;
+  apps: AppConfig[];
+  onSave: (path: string, maxDepth: number | undefined, defaultAppId: string | undefined) => Promise<void>;
 }) {
   const { pop } = useNavigation();
   const [pathText, setPathText] = useState(item?.path ?? "");
 
-  async function handleSubmit(values: { pathText: string; maxDepth: string }) {
+  const hasGlob = /[*?[\]{}]/.test(pathText);
+
+  async function handleSubmit(values: { pathText: string; maxDepth: string; defaultAppId: string }) {
     const trimmed = values.pathText.trim();
     if (!trimmed) return;
     const parsed = parseInt(values.maxDepth.trim(), 10);
     const maxDepth = !isNaN(parsed) && parsed > 0 ? parsed : undefined;
-    await onSave(trimmed, maxDepth);
+    const defaultAppId = values.defaultAppId ? values.defaultAppId : undefined;
+    await onSave(trimmed, maxDepth, defaultAppId);
     pop();
   }
 
@@ -459,6 +467,26 @@ function PathForm({
         defaultValue={item?.maxDepth?.toString() ?? ""}
         info="Limit how many levels deep to scan. Useful with ** patterns. Leave empty for no limit."
       />
+      <Form.Dropdown
+        id="defaultAppId"
+        title="Default App"
+        defaultValue={item?.defaultAppId ?? ""}
+        info={
+          hasGlob
+            ? "Applied as the default for folders whose path (or any ancestor) matches this glob. Overridden by per-folder defaults."
+            : "Applied as the default for folders under this path. Overridden by per-folder defaults."
+        }
+      >
+        <Form.Dropdown.Item value="" title="(none)" />
+        {apps.map((a) => (
+          <Form.Dropdown.Item
+            key={a.id}
+            value={a.id}
+            title={a.name}
+            icon={a.appPath ? { fileIcon: a.appPath } : Icon.AppWindow}
+          />
+        ))}
+      </Form.Dropdown>
     </Form>
   );
 }
