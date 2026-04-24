@@ -164,7 +164,10 @@ export default function ManageApps() {
           icon={Icon.TextCursor}
           actions={
             <ActionPanel>
-              <Action.Push title="Edit All Paths" target={<PathsBulkForm paths={paths} onSave={replacePaths} />} />
+              <Action.Push
+                title="Edit All Paths"
+                target={<PathsBulkForm paths={paths} apps={apps} onSave={replacePaths} />}
+              />
             </ActionPanel>
           }
         />
@@ -356,35 +359,90 @@ function AppForm({
 
 function PathsBulkForm({
   paths,
+  apps,
   onSave,
 }: {
   paths: PathItem[];
-  onSave: (items: { path: string; maxDepth?: number }[]) => Promise<void>;
+  apps: AppConfig[];
+  onSave: (items: { path: string; maxDepth?: number; defaultAppId?: string }[]) => Promise<void>;
 }) {
   const { pop } = useNavigation();
 
-  function serialize(items: PathItem[]): string {
-    return items.map((p) => (p.maxDepth !== undefined ? `${p.path},${p.maxDepth}` : p.path)).join("\n");
+  function aliasFor(appId: string | undefined): string | undefined {
+    if (!appId) return undefined;
+    return apps.find((a) => a.id === appId)?.alias;
   }
 
-  function parseLine(line: string): { path: string; maxDepth?: number } {
-    const commaIdx = line.lastIndexOf(",");
+  function serialize(items: PathItem[]): string {
+    return items
+      .map((p) => {
+        let line = p.path;
+        if (p.maxDepth !== undefined) line += `,${p.maxDepth}`;
+        const alias = aliasFor(p.defaultAppId);
+        if (alias) line += ` @${alias}`;
+        return line;
+      })
+      .join("\n");
+  }
+
+  /**
+   * Parse a single bulk-editor line. Recognised shapes:
+   *   path
+   *   path,depth
+   *   path @alias
+   *   path,depth @alias
+   * Alias may appear before or after the (path,depth) run in any whitespace-separated position.
+   */
+  function parseLine(
+    line: string,
+  ): { ok: true; value: { path: string; maxDepth?: number; defaultAppId?: string } } | { ok: false; error: string } {
+    const aliasMatch = line.match(/\s@(\S+)/);
+    let alias: string | undefined;
+    let head = line;
+    if (aliasMatch) {
+      alias = aliasMatch[1];
+      head = (line.slice(0, aliasMatch.index) + line.slice((aliasMatch.index ?? 0) + aliasMatch[0].length)).trim();
+    } else {
+      head = line.trim();
+    }
+
+    let path = head;
+    let maxDepth: number | undefined;
+    const commaIdx = head.lastIndexOf(",");
     if (commaIdx !== -1) {
-      const depthStr = line.slice(commaIdx + 1).trim();
+      const depthStr = head.slice(commaIdx + 1).trim();
       const depth = parseInt(depthStr, 10);
-      if (!isNaN(depth) && depth > 0 && String(depth) === depthStr.trim()) {
-        return { path: line.slice(0, commaIdx).trim(), maxDepth: depth };
+      if (!isNaN(depth) && depth > 0 && String(depth) === depthStr) {
+        path = head.slice(0, commaIdx).trim();
+        maxDepth = depth;
       }
     }
-    return { path: line };
+
+    if (!path) return { ok: false, error: "empty path" };
+
+    let defaultAppId: string | undefined;
+    if (alias !== undefined) {
+      const app = apps.find((a) => a.alias === alias);
+      if (!app) return { ok: false, error: `Unknown alias "@${alias}"` };
+      defaultAppId = app.id;
+    }
+
+    return { ok: true, value: { path, maxDepth, defaultAppId } };
   }
 
   async function handleSubmit(values: { text: string }) {
-    const items = values.text
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean)
-      .map(parseLine);
+    const lines = values.text.split("\n").map((l) => l.trim());
+    const items: { path: string; maxDepth?: number; defaultAppId?: string }[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line) continue;
+      const parsed = parseLine(line);
+      if (!parsed.ok) {
+        await showToast({ style: Toast.Style.Failure, title: `Line ${i + 1}: ${parsed.error}` });
+        return;
+      }
+      items.push(parsed.value);
+    }
     await onSave(items);
     pop();
   }
@@ -401,9 +459,9 @@ function PathsBulkForm({
       <Form.TextArea
         id="text"
         title="Paths"
-        placeholder={"~/projects\n~/work/*/src,3\n~/.config"}
+        placeholder={"~/projects\n~/work/*/src,3\n~/projects/work/aaa @ij"}
         defaultValue={serialize(paths)}
-        info="One path per line. Append ,N to set max depth (e.g. ~/projects/**/*,3)."
+        info="One path per line. Append ,N for max depth. Append @alias to set a default app (alias must match a configured app)."
       />
     </Form>
   );
