@@ -1,5 +1,15 @@
 # Open in App Changelog
 
+## [1.3.0] - 2026-04-24
+
+- merge: feat/open-in-app-path-default-apps into main
+- feat(open-in-app): show @alias tag (and @missing) on path list rows
+- feat(open-in-app): parse and serialize @alias in bulk paths editor
+- feat(open-in-app): add Default App dropdown to PathForm
+- feat(open-in-app): resolve defaults via path rules, skip seeding under rule
+- feat(open-in-app): add resolveDefaultApp with prefix+glob rules
+- feat(open-in-app): add defaultAppId field to PathItem
+
 ## [1.2.5] - 2026-04-20
 
 - fix(open-in-app): migrate to useCachedState for live UI sync
