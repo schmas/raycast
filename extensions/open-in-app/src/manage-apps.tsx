@@ -3,6 +3,7 @@ import {
   ActionPanel,
   Alert,
   Application,
+  Color,
   Form,
   Icon,
   List,
@@ -128,7 +129,19 @@ export default function ManageApps() {
             icon={Icon.Folder}
             title={displayPath(item.path)}
             subtitle={item.path}
-            accessories={item.maxDepth !== undefined ? [{ text: `depth: ${item.maxDepth}` }] : []}
+            accessories={[
+              ...(item.maxDepth !== undefined ? [{ text: `depth: ${item.maxDepth}` }] : []),
+              ...(item.defaultAppId
+                ? apps.some((a) => a.id === item.defaultAppId)
+                  ? [
+                      {
+                        tag: `@${apps.find((a) => a.id === item.defaultAppId)!.alias}`,
+                        tooltip: `Default: ${apps.find((a) => a.id === item.defaultAppId)!.name}`,
+                      },
+                    ]
+                  : [{ tag: { value: "@missing", color: Color.Red }, tooltip: "The referenced app has been deleted" }]
+                : []),
+            ]}
             actions={
               <ActionPanel>
                 <Action.Push
