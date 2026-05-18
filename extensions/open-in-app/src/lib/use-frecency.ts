@@ -8,8 +8,8 @@ const MAX_ENTRIES = 500;
 type FreqMap = Record<string, number>;
 
 interface FrecencyHook {
-  /** Sort an array of items by open frequency (most used first) */
-  sortByFrequency: <T extends { path: string }>(items: T[]) => T[];
+  /** Sort items by open frequency desc, then name asc case-insensitive */
+  sortByFrequency: <T extends { path: string; name: string }>(items: T[]) => T[];
   /** Return the open count for the given path (0 if never opened) */
   getFrequency: (path: string) => number;
   /** Record an open event for the given path */
@@ -49,9 +49,12 @@ export function useFrecency(): FrecencyHook {
     await LocalStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   }
 
-  function sortByFrequency<T extends { path: string }>(items: T[]): T[] {
-    if (Object.keys(freqRef.current).length === 0) return items;
-    return [...items].sort((a, b) => (freqRef.current[b.path] ?? 0) - (freqRef.current[a.path] ?? 0));
+  function sortByFrequency<T extends { path: string; name: string }>(items: T[]): T[] {
+    return [...items].sort((a, b) => {
+      const diff = (freqRef.current[b.path] ?? 0) - (freqRef.current[a.path] ?? 0);
+      if (diff !== 0) return diff;
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    });
   }
 
   function getFrequency(path: string): number {

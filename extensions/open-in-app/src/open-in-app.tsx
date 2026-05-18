@@ -127,9 +127,8 @@ export default function OpenInApp() {
     ? `Search in ${activeApp.name}…`
     : `Search ${FILTER_LABELS[filterMode].toLowerCase()}… | alias: ij react | exact: 'claude`;
 
-  const frecencyTiebreaker = (item: { path: string }) => getFrequency(item.path);
-  const filtered = fuzzySearch(folders, effectiveSearchTerm, "name", frecencyTiebreaker);
-  const results = effectiveSearchTerm ? filtered : sortByFrequency(filtered);
+  const filtered = fuzzySearch(folders, effectiveSearchTerm, "name");
+  const results = sortByFrequency(filtered);
 
   if (!appsLoading && apps.length === 0) {
     return (
