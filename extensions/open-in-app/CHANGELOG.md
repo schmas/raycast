@@ -1,5 +1,10 @@
 # Open in App Changelog
 
+## [1.3.1] - 2026-05-18
+
+- fix(open-in-app): sort zero-frequency results by name asc case-insensitive
+- chore(open-in-app): bump deps to latest Raycast (api 1.104.17, utils 2.2.4)
+
 ## [1.3.0] - 2026-04-24
 
 - merge: feat/open-in-app-path-default-apps into main
