@@ -59,7 +59,7 @@ export async function runMacTimer(payload: string): Promise<void> {
     await promptInstall();
   }
 
-  const tmpFile = join(tmpdir(), `mac-timer-${randomUUID()}.json`);
+  const tmpFile = join(tmpdir(), `mac-timer-${randomUUID()}.txt`);
   await writeFile(tmpFile, payload);
 
   try {
