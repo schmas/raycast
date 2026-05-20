@@ -1,5 +1,7 @@
 # Keeping You Awake Control Changelog
 
+## [1.0.5] - 2026-05-20
+
 ## [1.0.4] - 2026-05-18
 
 - chore(keeping-you-awake-control): bump deps to latest Raycast (api 1.104.17, utils 2.2.4)
