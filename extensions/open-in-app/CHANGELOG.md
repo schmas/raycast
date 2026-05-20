@@ -1,5 +1,7 @@
 # Open in App Changelog
 
+## [1.3.2] - 2026-05-20
+
 ## [1.3.1] - 2026-05-18
 
 - fix(open-in-app): sort zero-frequency results by name asc case-insensitive
