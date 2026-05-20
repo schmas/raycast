@@ -7,6 +7,7 @@ Custom [Raycast](https://raycast.com) extensions for macOS.
 | Extension | Description |
 |-----------|-------------|
 | [open-in-app](./extensions/open-in-app) | Fuzzy-find folders and open them in configured apps |
+| [mac-timer](./extensions/mac-timer) | Set timers and alarms in the macOS Clock app |
 
 ---
 
@@ -24,6 +25,22 @@ Quickly open any project folder in your preferred app. Type an alias prefix to t
 **Commands:**
 - **Open in App** — fuzzy search and open a folder
 - **Manage Apps & Paths** — configure apps and search directories
+
+### mac-timer
+
+Set timers and alarms in the macOS Clock app from Raycast.
+
+**Features:**
+- `Set Timer` — formats: `10s`, `5m`, `1.5h`, `5:30`, `1:30:00`
+- `Set Alarm` — formats: `7:30`, `19:00`, `7:30pm`, plus an optional label argument
+- Uses a bundled Apple Shortcut to call native Clock app actions
+- First-run install prompt for the required shortcut
+
+**Commands:**
+- **Set Timer** — start a Clock timer
+- **Set Alarm** — create a Clock alarm
+
+Inspired by [Shrieking Chimes](https://alfred.app/workflows/vitor/shrieking-chimes/) by Vítor Galvão.
 
 ## Development
 
