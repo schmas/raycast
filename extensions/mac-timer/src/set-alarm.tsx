@@ -16,9 +16,7 @@ export default async function SetAlarm(props: Props): Promise<void> {
 
   const timeStr = formatTimePayload(parsed);
   const trimmedLabel = label?.trim() ?? "";
-  const payload = trimmedLabel
-    ? `alarm\n${timeStr}\n${trimmedLabel}\n`
-    : `alarm\n${timeStr}\n`;
+  const payload = trimmedLabel ? `alarm\n${timeStr}\n${trimmedLabel}` : `alarm\n${timeStr}\n`;
 
   try {
     await runMacTimer(payload);
