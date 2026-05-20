@@ -1,5 +1,8 @@
 import { confirmAlert, environment, LocalStorage } from "@raycast/api";
 import { execFile } from "node:child_process";
+import { writeFile, unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
 import { promisify } from "node:util";
 import { join } from "node:path";
 
@@ -56,11 +59,13 @@ export async function runMacTimer(payload: string): Promise<void> {
     await promptInstall();
   }
 
+  const tmpFile = join(tmpdir(), `mac-timer-${randomUUID()}.json`);
+  await writeFile(tmpFile, payload);
+
   try {
-    await execFileP("/usr/bin/shortcuts", ["run", SHORTCUT_NAME, "--input-path", "-"], {
-      input: payload,
+    await execFileP("/usr/bin/shortcuts", ["run", SHORTCUT_NAME, "--input-path", tmpFile], {
       timeout: 5000,
-    } as Parameters<typeof execFileP>[2]);
+    });
   } catch (err) {
     const error = err as NodeJS.ErrnoException & { stderr?: string };
     const stderr = error.stderr ?? error.message;
@@ -70,5 +75,9 @@ export async function runMacTimer(payload: string): Promise<void> {
       throw new ShortcutNotInstalledError();
     }
     throw new ShortcutInvocationError(stderr);
+  } finally {
+    await unlink(tmpFile).catch((e: NodeJS.ErrnoException) => {
+      if (e.code !== "ENOENT") throw e;
+    });
   }
 }
