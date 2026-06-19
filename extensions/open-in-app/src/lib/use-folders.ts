@@ -19,6 +19,14 @@ interface FolderHook {
 
 const GLOB_CHARS = /[*?[\]{}]/;
 
+// Cap unbounded "**" globs that omit an explicit depth (e.g. "~/dir/**/*") so they
+// don't recurse through full repo checkouts and exhaust the worker heap.
+const DEFAULT_GLOB_DEPTH = 4;
+
+// Hard ceiling on collected entries. Bounds memory regardless of tree size so a
+// single broad search path can never exceed the extension's worker heap limit.
+const MAX_RESULTS = 5000;
+
 const IGNORE = [
   "**/node_modules/**",
   "**/.git/**",
@@ -77,7 +85,7 @@ export function useFolders(
           // Skip patterns whose base resolves to filesystem root to avoid scanning the entire disk
           if (cwd === "/") continue;
           pattern = parts.slice(firstGlobIdx).join("/");
-          maxDepth = item.maxDepth;
+          maxDepth = item.maxDepth ?? DEFAULT_GLOB_DEPTH;
         } else {
           cwd = expanded;
           pattern = "*";
@@ -95,31 +103,25 @@ export function useFolders(
         }
 
         try {
-          const matches = await glob(pattern, { cwd, absolute: true, maxDepth, ignore: IGNORE });
+          // Stream matches with their dirent type instead of buffering the full
+          // result set and stat'ing every entry — keeps memory flat on huge trees.
+          const iterator = glob.iterate(pattern, { cwd, maxDepth, ignore: IGNORE, withFileTypes: true });
 
-          await Promise.all(
-            matches.map(async (match) => {
-              try {
-                const stat = await fs.promises.stat(match);
-                const isDir = stat.isDirectory();
-                const include =
-                  filterMode === "all" || (filterMode === "folders" && isDir) || (filterMode === "files" && !isDir);
-                if (include) {
-                  allFolders.push({
-                    name: path.basename(match),
-                    path: match,
-                    displayPath: shortenPath(match),
-                    isDirectory: isDir,
-                  });
-                }
-              } catch {
-                // skip inaccessible paths
-              }
-            }),
-          );
+          for await (const entry of iterator) {
+            if (cancelled) return;
+            const isDir = entry.isDirectory();
+            const include =
+              filterMode === "all" || (filterMode === "folders" && isDir) || (filterMode === "files" && !isDir);
+            if (!include) continue;
+            const full = entry.fullpath();
+            allFolders.push({ name: entry.name, path: full, displayPath: shortenPath(full), isDirectory: isDir });
+            if (allFolders.length >= MAX_RESULTS) break;
+          }
         } catch {
           // skip invalid patterns
         }
+
+        if (allFolders.length >= MAX_RESULTS) break;
       }
 
       if (cancelled) return;
