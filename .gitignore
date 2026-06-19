@@ -55,3 +55,7 @@ Desktop.ini
 # Local development aids (intentionally untracked — do NOT `git add -f`)
 AGENTS.md
 **/AGENTS.md
+
+# AI planning/journal artifacts (may reference client NDA names — keep local-only)
+.ck-plans/
+.ck-docs/
