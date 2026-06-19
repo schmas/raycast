@@ -1,5 +1,9 @@
 # Open in App Changelog
 
+## [1.3.3] - 2026-06-19
+
+- fix(open-in-app): cap glob depth and stream scan to prevent OOM
+
 ## [1.3.2] - 2026-05-20
 
 ## [1.3.1] - 2026-05-18
