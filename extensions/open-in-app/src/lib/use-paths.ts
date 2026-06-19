@@ -9,21 +9,25 @@ export interface PathItem {
   path: string; // ~ or absolute, may contain glob chars
   maxDepth?: number;
   defaultAppId?: string;
+  labelSegments?: number; // last N path segments form the label/search key (>=2). undefined/1 = leaf only
 }
 
 export interface PathsHook {
   paths: PathItem[];
   isLoading: boolean;
-  addPath: (path: string, maxDepth?: number, defaultAppId?: string) => Promise<void>;
+  addPath: (path: string, maxDepth?: number, defaultAppId?: string, labelSegments?: number) => Promise<void>;
   updatePath: (
     id: string,
     newPath: string,
     maxDepth: number | undefined,
     defaultAppId: string | undefined,
+    labelSegments: number | undefined,
   ) => Promise<void>;
   deletePath: (id: string) => Promise<void>;
   movePath: (id: string, direction: "up" | "down") => Promise<void>;
-  replacePaths: (items: { path: string; maxDepth?: number; defaultAppId?: string }[]) => Promise<void>;
+  replacePaths: (
+    items: { path: string; maxDepth?: number; defaultAppId?: string; labelSegments?: number }[],
+  ) => Promise<void>;
 }
 
 const CACHE_KEY = "paths";
@@ -55,10 +59,11 @@ export function usePaths(): PathsHook {
     })();
   }, []);
 
-  async function addPath(path: string, maxDepth?: number, defaultAppId?: string) {
+  async function addPath(path: string, maxDepth?: number, defaultAppId?: string, labelSegments?: number) {
     const item: PathItem = { id: randomUUID(), path };
     if (maxDepth !== undefined) item.maxDepth = maxDepth;
     if (defaultAppId !== undefined) item.defaultAppId = defaultAppId;
+    if (labelSegments !== undefined) item.labelSegments = labelSegments;
     setPaths((current) => [...current, item]);
   }
 
@@ -67,6 +72,7 @@ export function usePaths(): PathsHook {
     newPath: string,
     maxDepth: number | undefined,
     defaultAppId: string | undefined,
+    labelSegments: number | undefined,
   ) {
     setPaths((current) =>
       current.map((p) => {
@@ -76,6 +82,8 @@ export function usePaths(): PathsHook {
         else delete next.maxDepth;
         if (defaultAppId !== undefined) next.defaultAppId = defaultAppId;
         else delete next.defaultAppId;
+        if (labelSegments !== undefined) next.labelSegments = labelSegments;
+        else delete next.labelSegments;
         return next;
       }),
     );
@@ -97,14 +105,17 @@ export function usePaths(): PathsHook {
     });
   }
 
-  async function replacePaths(items: { path: string; maxDepth?: number; defaultAppId?: string }[]) {
+  async function replacePaths(
+    items: { path: string; maxDepth?: number; defaultAppId?: string; labelSegments?: number }[],
+  ) {
     setPaths((current) => {
       const existingByPath = new Map(current.map((p) => [p.path, p]));
-      return items.map(({ path, maxDepth, defaultAppId }) => {
+      return items.map(({ path, maxDepth, defaultAppId, labelSegments }) => {
         const existing = existingByPath.get(path);
         const next: PathItem = { id: existing?.id ?? randomUUID(), path };
         if (maxDepth !== undefined) next.maxDepth = maxDepth;
         if (defaultAppId !== undefined) next.defaultAppId = defaultAppId;
+        if (labelSegments !== undefined) next.labelSegments = labelSegments;
         return next;
       });
     });

@@ -131,6 +131,7 @@ export default function ManageApps() {
             subtitle={item.path}
             accessories={[
               ...(item.maxDepth !== undefined ? [{ text: `depth: ${item.maxDepth}` }] : []),
+              ...(item.labelSegments !== undefined ? [{ text: `segments: ${item.labelSegments}` }] : []),
               ...(item.defaultAppId
                 ? apps.some((a) => a.id === item.defaultAppId)
                   ? [
@@ -147,7 +148,7 @@ export default function ManageApps() {
                 <Action.Push
                   title="Edit"
                   icon={Icon.Pencil}
-                  target={<PathForm item={item} apps={apps} onSave={(p, d, a) => updatePath(item.id, p, d, a)} />}
+                  target={<PathForm item={item} apps={apps} onSave={(p, d, a, s) => updatePath(item.id, p, d, a, s)} />}
                 />
                 <Action
                   title="Move up"
@@ -191,7 +192,7 @@ export default function ManageApps() {
             <ActionPanel>
               <Action.Push
                 title="Add Search Path"
-                target={<PathForm apps={apps} onSave={(p, d, a) => addPath(p, d, a)} />}
+                target={<PathForm apps={apps} onSave={(p, d, a, s) => addPath(p, d, a, s)} />}
               />
             </ActionPanel>
           }
@@ -377,7 +378,9 @@ function PathsBulkForm({
 }: {
   paths: PathItem[];
   apps: AppConfig[];
-  onSave: (items: { path: string; maxDepth?: number; defaultAppId?: string }[]) => Promise<void>;
+  onSave: (
+    items: { path: string; maxDepth?: number; defaultAppId?: string; labelSegments?: number }[],
+  ) => Promise<void>;
 }) {
   const { pop } = useNavigation();
 
@@ -391,6 +394,7 @@ function PathsBulkForm({
       .map((p) => {
         let line = p.path;
         if (p.maxDepth !== undefined) line += `,${p.maxDepth}`;
+        if (p.labelSegments !== undefined) line += ` #${p.labelSegments}`;
         const alias = aliasFor(p.defaultAppId);
         if (alias) line += ` @${alias}`;
         return line;
@@ -403,21 +407,34 @@ function PathsBulkForm({
    *   path
    *   path,depth
    *   path @alias
-   *   path,depth @alias
-   * Alias may appear before or after the (path,depth) run in any whitespace-separated position.
+   *   path #segments
+   *   path,depth #segments @alias
+   * The space-prefixed @alias and #segments tokens may appear in any whitespace-separated
+   * position; both are pulled out before the trailing ,depth is parsed from the remainder.
    */
   function parseLine(
     line: string,
-  ): { ok: true; value: { path: string; maxDepth?: number; defaultAppId?: string } } | { ok: false; error: string } {
-    const aliasMatch = line.match(/\s@(\S+)/);
+  ):
+    | { ok: true; value: { path: string; maxDepth?: number; defaultAppId?: string; labelSegments?: number } }
+    | { ok: false; error: string } {
+    let working = line;
+
+    const aliasMatch = working.match(/\s@(\S+)/);
     let alias: string | undefined;
-    let head = line;
     if (aliasMatch) {
       alias = aliasMatch[1];
-      head = (line.slice(0, aliasMatch.index) + line.slice((aliasMatch.index ?? 0) + aliasMatch[0].length)).trim();
-    } else {
-      head = line.trim();
+      working = working.slice(0, aliasMatch.index) + working.slice((aliasMatch.index ?? 0) + aliasMatch[0].length);
     }
+
+    const segMatch = working.match(/\s#(\d+)/);
+    let labelSegments: number | undefined;
+    if (segMatch) {
+      const n = parseInt(segMatch[1], 10);
+      if (n > 1) labelSegments = n;
+      working = working.slice(0, segMatch.index) + working.slice((segMatch.index ?? 0) + segMatch[0].length);
+    }
+
+    const head = working.trim();
 
     let path = head;
     let maxDepth: number | undefined;
@@ -440,12 +457,12 @@ function PathsBulkForm({
       defaultAppId = app.id;
     }
 
-    return { ok: true, value: { path, maxDepth, defaultAppId } };
+    return { ok: true, value: { path, maxDepth, defaultAppId, labelSegments } };
   }
 
   async function handleSubmit(values: { text: string }) {
     const lines = values.text.split("\n").map((l) => l.trim());
-    const items: { path: string; maxDepth?: number; defaultAppId?: string }[] = [];
+    const items: { path: string; maxDepth?: number; defaultAppId?: string; labelSegments?: number }[] = [];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (!line) continue;
@@ -472,9 +489,9 @@ function PathsBulkForm({
       <Form.TextArea
         id="text"
         title="Paths"
-        placeholder={"~/projects\n~/work/*/src,3\n~/projects/work/aaa @ij"}
+        placeholder={"~/projects\n~/work/*/src,3\n~/projects/work/aaa @ij\n~/.worktrees/*/*,2 @ij #2"}
         defaultValue={serialize(paths)}
-        info="One path per line. Append ,N for max depth. Append @alias to set a default app (alias must match a configured app)."
+        info="One path per line. Append ,N for max depth. Append @alias to set a default app (alias must match a configured app). Append #N for search segments — the number of trailing path folders used as the search key + subtitle (2 = repo/branch worktrees)."
       />
     </Form>
   );
@@ -489,20 +506,32 @@ function PathForm({
 }: {
   item?: PathItem;
   apps: AppConfig[];
-  onSave: (path: string, maxDepth: number | undefined, defaultAppId: string | undefined) => Promise<void>;
+  onSave: (
+    path: string,
+    maxDepth: number | undefined,
+    defaultAppId: string | undefined,
+    labelSegments: number | undefined,
+  ) => Promise<void>;
 }) {
   const { pop } = useNavigation();
   const [pathText, setPathText] = useState(item?.path ?? "");
 
   const hasGlob = /[*?[\]{}]/.test(pathText);
 
-  async function handleSubmit(values: { pathText: string; maxDepth: string; defaultAppId: string }) {
+  async function handleSubmit(values: {
+    pathText: string;
+    maxDepth: string;
+    defaultAppId: string;
+    labelSegments: string;
+  }) {
     const trimmed = values.pathText.trim();
     if (!trimmed) return;
     const parsed = parseInt(values.maxDepth.trim(), 10);
     const maxDepth = !isNaN(parsed) && parsed > 0 ? parsed : undefined;
     const defaultAppId = values.defaultAppId ? values.defaultAppId : undefined;
-    await onSave(trimmed, maxDepth, defaultAppId);
+    const segParsed = parseInt(values.labelSegments.trim(), 10);
+    const labelSegments = !isNaN(segParsed) && segParsed > 1 ? segParsed : undefined;
+    await onSave(trimmed, maxDepth, defaultAppId, labelSegments);
     pop();
   }
 
@@ -537,6 +566,13 @@ function PathForm({
         placeholder="optional, e.g. 3"
         defaultValue={item?.maxDepth?.toString() ?? ""}
         info="Limit how many levels deep to scan. Useful with ** patterns. Leave empty for no limit."
+      />
+      <Form.TextField
+        id="labelSegments"
+        title="Search Segments"
+        placeholder="optional number, e.g. 2"
+        defaultValue={item?.labelSegments?.toString() ?? ""}
+        info="A NUMBER: how many trailing path folders to use as the search key + subtitle (counted from the leaf). Each extra segment is searchable and the parent(s) show as the subtitle. 2 = repo/branch worktrees — searching the repo finds its branches. 3 also matches the grandparent (e.g. type 'worktrees' to list every repo's branches). Empty or 1 = leaf folder only (default)."
       />
       <Form.Dropdown
         id="defaultAppId"

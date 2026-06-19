@@ -110,6 +110,51 @@ Paths tell the extension where to look for folders. You can use:
 
 The following directories are always excluded from results: `node_modules`, `.git`, `.hg`, `.svn`, `dist`, `.cache`, `__pycache__`.
 
+#### Per-path options
+
+Each search path has three optional settings (configurable in the path form, or inline in the bulk editor):
+
+| Option          | Form field      | Bulk token | Meaning                                                               |
+| --------------- | --------------- | ---------- | --------------------------------------------------------------------- |
+| Max Depth       | Max Depth       | `,N`       | How many levels deep to scan (useful with `**`). Empty = no limit.    |
+| Default App     | Default App     | `@alias`   | Default app for folders under this path (alias must match an app).    |
+| Search Segments | Search Segments | `#N`       | How many trailing path folders to use as the search key and subtitle. |
+
+Bulk-editor line format (one path per line, tokens in any order):
+
+```
+~/.worktrees/*/*,2 @ij #2
+```
+
+→ glob `~/.worktrees/*/*`, max depth `2`, default app `@ij`, search segments `2`.
+
+#### Search Segments (worktrees)
+
+By default a folder is found and titled by its leaf name only. For git worktrees laid out as `~/.worktrees/<repo>/<branch>`, the leaf is the branch — so searching the repo name never finds its branches, and long branch names hide the repo.
+
+**Search Segments** is a **number**: how many trailing path folders (counted from the leaf) to use as the search key and subtitle. Each segment beyond the leaf becomes both searchable and visible as the row subtitle. The row title always stays the leaf (branch) name.
+
+##### Setup
+
+Use the glob `~/.worktrees/*/*` with **Search Segments = 2**:
+
+- In the form: **Manage Apps & Paths** (`⌘⇧M`) → **Add Search Path** → Path/Glob `~/.worktrees/*/*`, Search Segments `2`.
+- In the bulk editor (**Edit All Paths**): add a line `~/.worktrees/*/*,2 #2`.
+
+The `*/*` glob matches exactly two levels, so only branch directories appear — no repo "container" rows.
+
+##### Worked example
+
+For the path `~/.worktrees/my-repo/bugfix-1234`:
+
+| Search Segments | Search key (what you can type to find it) | Title         | Subtitle                       |
+| --------------- | ----------------------------------------- | ------------- | ------------------------------ |
+| empty / `1`     | `bugfix-1234`                             | `bugfix-1234` | parent path (default behavior) |
+| `2`             | `my-repo / bugfix-1234`                   | `bugfix-1234` | `my-repo`                      |
+| `3`             | `.worktrees / my-repo / bugfix-1234`      | `bugfix-1234` | `.worktrees / my-repo`         |
+
+So with `2`, typing `my-repo` (or `repo`) lists every branch of that repo. With `3`, the shared `.worktrees` segment is in every row's key, so typing `worktrees` lists every repo's branches at once. Counting is from the end, so a path shorter than the number just uses what it has.
+
 ### Folder Defaults
 
 The **Manage Apps & Paths** screen includes a **Folder Defaults** section listing all folders with a saved default app. From there you can:

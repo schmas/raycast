@@ -127,7 +127,7 @@ export default function OpenInApp() {
     ? `Search in ${activeApp.name}…`
     : `Search ${FILTER_LABELS[filterMode].toLowerCase()}… | alias: ij react | exact: 'claude`;
 
-  const filtered = fuzzySearch(folders, effectiveSearchTerm, "name");
+  const filtered = fuzzySearch(folders, effectiveSearchTerm, "label");
   const results = sortByFrequency(filtered);
 
   if (!appsLoading && apps.length === 0) {
@@ -193,13 +193,18 @@ export default function OpenInApp() {
           defaultApp && !activeApp ? [defaultApp, ...apps.filter((a) => a.id !== defaultApp.id)] : apps;
         const visibleApps = activeApp ? [activeApp] : orderedApps;
 
+        // Labeled rows (labelSegments > 1) show the parent segment(s) as the subtitle
+        // — e.g. the repo for a worktree branch. Leaf-only rows (label === name) keep
+        // the existing parent-path subtitle with the long-name blanking rule.
+        const repoSubtitle = folder.label !== folder.name ? folder.label.split(" / ").slice(0, -1).join(" / ") : null;
+
         return (
           <List.Item
             key={folder.path}
             icon={folder.isDirectory ? Icon.Folder : Icon.Document}
             title={folder.name}
-            subtitle={folder.name.length > 35 ? "" : parentPath(folder)}
-            keywords={[folder.name]}
+            subtitle={repoSubtitle ?? (folder.name.length > 35 ? "" : parentPath(folder))}
+            keywords={[folder.label]}
             accessories={[
               ...(activeApp
                 ? [{ tag: activeApp.alias }]

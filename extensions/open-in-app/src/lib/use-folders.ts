@@ -10,6 +10,7 @@ export interface FolderItem {
   path: string;
   displayPath: string;
   isDirectory: boolean;
+  label: string;
 }
 
 interface FolderHook {
@@ -46,16 +47,28 @@ function shortenPath(p: string): string {
   return p.startsWith(home) ? "~" + p.slice(home.length) : p;
 }
 
+// Compose the search key / label from the last N path segments. N<=1 (or absent)
+// yields the leaf name — identical to the pre-labelSegments behaviour. "/" is a
+// safe segment separator because it can't appear inside a Unix filename, so the
+// display layer can split it back apart unambiguously.
+function buildLabel(fullPath: string, name: string, segments?: number): string {
+  if (!segments || segments <= 1) return name;
+  const parts = fullPath.split("/").filter(Boolean);
+  return parts.slice(-segments).join(" / ");
+}
+
 export type FilterMode = "folders" | "files" | "all";
 
 export function useFolders(
-  searchPaths: Pick<PathItem, "path" | "maxDepth">[],
+  searchPaths: Pick<PathItem, "path" | "maxDepth" | "labelSegments">[],
   filterMode: FilterMode = "folders",
 ): FolderHook {
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const pathsKey = `${searchPaths.map((p) => `${p.path}:${p.maxDepth ?? ""}`).join("|")}:${filterMode}`;
+  const pathsKey = `${searchPaths
+    .map((p) => `${p.path}:${p.maxDepth ?? ""}:${p.labelSegments ?? ""}`)
+    .join("|")}:${filterMode}`;
 
   useEffect(() => {
     if (searchPaths.length === 0) {
@@ -99,7 +112,10 @@ export function useFolders(
         }
 
         if (!hasGlob && filterMode !== "files") {
-          allFolders.push({ name: path.basename(cwd), path: cwd, displayPath: shortenPath(cwd), isDirectory: true });
+          // Non-glob self-entry keeps a leaf-only label — buildLabel applies only
+          // to glob matches so plain roots don't get labels like "schmas / .worktrees".
+          const base = path.basename(cwd);
+          allFolders.push({ name: base, path: cwd, displayPath: shortenPath(cwd), isDirectory: true, label: base });
         }
 
         try {
@@ -114,7 +130,13 @@ export function useFolders(
               filterMode === "all" || (filterMode === "folders" && isDir) || (filterMode === "files" && !isDir);
             if (!include) continue;
             const full = entry.fullpath();
-            allFolders.push({ name: entry.name, path: full, displayPath: shortenPath(full), isDirectory: isDir });
+            allFolders.push({
+              name: entry.name,
+              path: full,
+              displayPath: shortenPath(full),
+              isDirectory: isDir,
+              label: buildLabel(full, entry.name, item.labelSegments),
+            });
             if (allFolders.length >= MAX_RESULTS) break;
           }
         } catch {
