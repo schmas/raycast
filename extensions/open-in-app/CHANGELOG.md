@@ -1,5 +1,9 @@
 # Open in App Changelog
 
+## [1.4.0] - 2026-06-19
+
+- feat(open-in-app): add per-path Search Segments for worktree search (search a repo to find its branches, repo shown as subtitle)
+
 ## [1.3.3] - 2026-06-19
 
 - fix(open-in-app): cap glob depth and stream scan to prevent OOM
