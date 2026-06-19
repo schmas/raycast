@@ -1,5 +1,7 @@
 # Open in App Changelog
 
+## [1.4.1] - 2026-06-19
+
 ## [1.4.0] - 2026-06-19
 
 - feat(open-in-app): add per-path Search Segments for worktree search (search a repo to find its branches, repo shown as subtitle)
